@@ -378,6 +378,19 @@ typedef struct {
 	PyObject *dict;
 } proxyobject;
 
+static PyObject *
+Server_memclient(ServerObject *self, PyObject *args)
+{
+    PyObject *list;
+
+    if(!PyArg_ParseTuple(args, "O:memclient", &list)){
+        return NULL;
+    }
+    PyObject *memclient = MemClient_New(self, list);
+    return memclient;
+
+}
+
 static PyObject * 
 Server_write(ServerObject *self, PyObject *args)
 {
@@ -515,6 +528,7 @@ static PyMethodDef Server_method[] = {
     { "listen",      (PyCFunction)Server_listen, METH_VARARGS, 0 },
     { "run",      (PyCFunction)Server_run, METH_VARARGS, 0 },
     { "write",      (PyCFunction)Server_write, METH_VARARGS, 0 },
+    { "MemClient",      (PyCFunction)Server_memclient, METH_VARARGS, 0 },
     { NULL, NULL}
 };
 

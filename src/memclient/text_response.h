@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MEMTEXT_MAX_MULTI_GET 256
 
 typedef struct {
 	size_t key_pos;

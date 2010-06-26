@@ -25,12 +25,54 @@ server_t_free_field(memserver_t *server)
 }
 
 static int
-_connect(memserver_t *server)
+setup_servers(MemClient *client, PyObject *list)
 {
+    PyObject *iterator;
+    PyObject *item;
+    char *host;
+    iterator = PyObject_GetIter(list);
+    if(PyErr_Occurred()){
+        return -1;
+    }
+    while((item =  PyIter_Next(iterator))){
+        if(PyString_Check(item)){
+            host = PyString_AS_STRING(item);
+            add_server(client->consistent, host);
+        }else{
+            PyErr_SetString(PyExc_ValueError,"server must string list");
+            return -1;
+        }
+    }
+
+    update_consistent(client->consistent);
     return 0;
 }
 
 
+
+PyObject *  
+MemClient_New(ServerObject *server, PyObject *list)
+{
+    consistent_t *consistent;
+    
+    MemClient *self;
+
+    self = PyObject_NEW(MemClient, &MemClientType);
+    if(self == NULL){
+        return NULL;
+    }
+    self->consistent = init_consistent();
+    self->gate_server = server;
+    
+    return (PyObject *)self;
+}
+
+PyObject * 
+MemClient_get(MemClient *self, PyObject *key)
+{
+    
+    Py_RETURN_NONE;
+}
 
 
 static void
@@ -39,10 +81,14 @@ MemClient_dealloc(MemClient* self)
     PyObject_DEL(self);
 }
 
+static PyMethodDef Server_method[] = {
+    { "get",      (PyCFunction)MemClient_get, METH_VARARGS, 0 },
+    { NULL, NULL}
+};
 
 PyTypeObject MemClientType = {
 	PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    "memproto.MemcClient",             /*tp_name*/
+    "mgate.MemClient",             /*tp_name*/
     sizeof(MemClient), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)MemClient_dealloc, /*tp_dealloc*/

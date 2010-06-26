@@ -2,7 +2,7 @@
 
 static void 
 parse_host(memserver_t server, char *server_string){
-    int port;
+    int port = 11211;
     char *ptr;
     
     char buffer[256];
@@ -37,7 +37,7 @@ init_consistent(void)
     return consistent;
 }
 
-static void
+void
 add_server(consistent_t *consistent, char *host)
 {
 

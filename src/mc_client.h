@@ -1,23 +1,14 @@
 #ifndef mc_client_h
 #define mc_client_h
 
-#include <Python.h>
-#include <sys/uio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <stddef.h> 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "picoev.h"
+#include "server.h"
 #include "memclient/text_response.h"
 
 #define MAX_SERVER 128
 #define POINTS_PER_SERVER 100
 #define MAX_HOST_LENGTH 128
 
-typedef struct iovec iovec_t;
+//typedef struct iovec iovec_t;
 
 typedef enum {
     READY,
@@ -68,6 +59,8 @@ typedef struct {
     //memserver_t mem_servers[MAX_SERVER];
     PyObject *gate_server;
     uint32_t server_count;
+    consistent_t *consistent;
 } MemClient;
 
+extern PyTypeObject MemClientType;
 #endif
