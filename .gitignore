@@ -1,0 +1,6 @@
+*.so
+*.pyc
+protocol.txt
+build
+mgate.egg-info
+
