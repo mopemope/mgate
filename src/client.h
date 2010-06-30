@@ -5,6 +5,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include "memproto/memtext.h"
+#include "memproto/memproto.h"
 
 
 typedef struct iovec iovec_t;
@@ -17,8 +18,10 @@ typedef struct {
     size_t input_buf_size;
     size_t input_pos;
     size_t input_len;
-    memtext_parser *parser;
-    memtext_callback *callback;          
+    void *parser;
+    void *callback;          
+    //memtext_parser *parser;
+    //memtext_callback *callback;          
 } client_t;
 
 typedef struct {

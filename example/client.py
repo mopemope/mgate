@@ -31,13 +31,13 @@ if __name__ == '__main__':
     #t = Timer("test()", "from __main__ import test")
     #print t.repeat(number=1000)
     
-    #t = Timer("test_py()", "from __main__ import test_py")
-    #print t.repeat(number=1000)
+    t = Timer("test_py()", "from __main__ import test_py")
+    print t.repeat(number=1000)
     
     #t = Timer("test_cas()", "from __main__ import test_cas")
     #print t.repeat(number=1000)
-    client = memcache.Client(["localhost:5000"])
-    client.get("A")
+    #client = memcache.Client(["localhost:5000"])
+    #client.set("A")
 
 
 

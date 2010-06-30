@@ -528,7 +528,7 @@ static PyMethodDef Server_method[] = {
     { "listen",      (PyCFunction)Server_listen, METH_VARARGS, 0 },
     { "run",      (PyCFunction)Server_run, METH_VARARGS, 0 },
     { "write",      (PyCFunction)Server_write, METH_VARARGS, 0 },
-    { "MemClient",      (PyCFunction)Server_memclient, METH_VARARGS, 0 },
+    //{ "MemClient",      (PyCFunction)Server_memclient, METH_VARARGS, 0 },
     { NULL, NULL}
 };
 
