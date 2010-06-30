@@ -1,5 +1,6 @@
 #include "server.h"
 #include "parser.h"
+#include "b_parser.h"
 
 #define BUFSIZE 4096
 
@@ -218,7 +219,11 @@ client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
     pyclient->client = client;
-    init_parser(pyclient);
+    if(binary_protocol){
+        init_binary_parser(pyclient);
+    }else{
+        init_text_parser(pyclient);
+    }
 }
 
 static void
@@ -542,7 +547,11 @@ Client_exec_parse(Client *self, char *buf, size_t read_length)
     client_t *client;
     client = self->client;
     buf_write(client, buf, read_length);
-    execute_parse(self, client->input_buf, client->input_len, &(client->input_pos));
+    if(binary_protocol){
+        execute_binray_parse(self, client->input_buf, client->input_len, &(client->input_pos));
+    }else{
+        execute_text_parse(self, client->input_buf, client->input_len, &(client->input_pos));
+    }
 }
 
 void 
@@ -561,7 +570,11 @@ Client_clear(Client *self)
     self->key_num = 0;
     self->data = NULL;
     //PyDict_Clear(self->env);
-    init_parser(self);
+    if(binary_protocol){
+        init_binary_parser(self);
+    }else{
+        init_text_parser(self);
+    }
 }
 
 

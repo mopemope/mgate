@@ -17,6 +17,7 @@
 #include <netinet/tcp.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 #include "picoev.h"
 #include "client.h"
@@ -47,6 +48,8 @@ void
 request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas);
 
 int loop_done;
+
+bool binary_protocol;
 
 #endif
 

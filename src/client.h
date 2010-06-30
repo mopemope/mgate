@@ -31,6 +31,7 @@ typedef struct {
     int fd;
     int key_num;
     void *data;
+    bool binary;
 } Client;
 
 typedef struct {

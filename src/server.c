@@ -22,6 +22,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 //write_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 int loop_done = 0;
+bool binary_protocol = false;
 
 static 
 void setup_sock(int fd)

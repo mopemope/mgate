@@ -590,7 +590,7 @@ numeric_callback(void* user, memtext_command cmd, memtext_request_numeric* req)
 }
 
 void 
-init_parser(Client *pyclient)
+init_text_parser(Client *pyclient)
 {     
     client_t *client = pyclient->client;
     memtext_callback *callback;    
@@ -615,7 +615,7 @@ init_parser(Client *pyclient)
 }
 
 int 
-execute_parse(Client *pyclient, const char* data, size_t len, size_t* off)
+execute_text_parse(Client *pyclient, const char* data, size_t len, size_t* off)
 {
     client_t *client = pyclient->client;
     memtext_parser *parser = client->parser;
