@@ -210,6 +210,7 @@ static void
 client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
 {
     client_t *client;
+    ServerObject *server;
     client = PyMem_Malloc(sizeof(client_t)); 
     client->fd = fd;
     client->input_buf = malloc(sizeof(char) * BUFSIZE);
@@ -219,7 +220,9 @@ client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
     pyclient->client = client;
-    if(binary_protocol){
+    server = pyclient->server;
+
+    if(server->binary_protocol){
         init_binary_parser(pyclient);
     }else{
         init_text_parser(pyclient);
@@ -545,9 +548,12 @@ void
 Client_exec_parse(Client *self, char *buf, size_t read_length)
 {
     client_t *client;
+    ServerObject *server;
     client = self->client;
+    server = self->server;
+
     buf_write(client, buf, read_length);
-    if(binary_protocol){
+    if(server->binary_protocol){
         execute_binray_parse(self, client->input_buf, client->input_len, &(client->input_pos));
     }else{
         execute_text_parse(self, client->input_buf, client->input_len, &(client->input_pos));
@@ -560,6 +566,7 @@ Client_clear(Client *self)
 #ifdef DEBUG
     printf("clear fd = %d\n", self->fd);
 #endif
+    ServerObject *server = (ServerObject *)self->server;
     client_t *client;
     client = self->client;
     free_client_field(client);
@@ -570,7 +577,7 @@ Client_clear(Client *self)
     self->key_num = 0;
     self->data = NULL;
     //PyDict_Clear(self->env);
-    if(binary_protocol){
+    if(server->binary_protocol){
         init_binary_parser(self);
     }else{
         init_text_parser(self);
@@ -596,7 +603,7 @@ Client_close(Client *self)
 
 
 PyObject *  
-Client_New(int fd, char *remote_addr, int remote_port)
+Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
 {
     Client *self;
 
@@ -607,6 +614,7 @@ Client_New(int fd, char *remote_addr, int remote_port)
     self->fd = fd;
     self->key_num = 0;
     self->data = NULL;
+    self->server = server;
     client_t_new(self, fd, remote_addr, remote_port);
     return (PyObject *)self;
 }

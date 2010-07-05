@@ -1,5 +1,5 @@
 #include "server.h"
-//#include "client.h"
+#include "structmember.h"
 
 
 #define MAX_FDS 1024
@@ -22,7 +22,6 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 //write_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 int loop_done = 0;
-bool binary_protocol = false;
 
 static 
 void setup_sock(int fd)
@@ -363,11 +362,11 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             setup_sock(client_fd);
             remote_addr = inet_ntoa (client_addr.sin_addr);
             remote_port = ntohs(client_addr.sin_port);
-            client = (Client *)Client_New(client_fd, remote_addr, remote_port);
+            client = (Client *)Client_New(server, client_fd, remote_addr, remote_port);
             if(!client){
                 //TODO ERROR
             }
-            client->server = (PyObject *)server;
+            //client->server = (PyObject *)server;
             picoev_add(loop, client_fd, PICOEV_READ, TIMEOUT_SECS, read_callback, client);
         }
     }
@@ -507,6 +506,10 @@ Server_run(ServerObject *self){
     
     self->main_loop = main_loop;
 
+
+#ifdef DEBUG
+    printf("binary_protocol %d\n", self->binary_protocol);
+#endif
     /* add listen socket */
     picoev_add(main_loop, self->listen_fd, PICOEV_READ, 0, accept_callback, self);
     /* loop */
@@ -522,6 +525,11 @@ Server_run(ServerObject *self){
     
     Py_RETURN_NONE;
 }
+
+static PyMemberDef Server_members[] = {
+    {"binary_protocol", T_BOOL, offsetof(ServerObject, binary_protocol), 0, "binary_protocol"},
+    {NULL} 
+};
 
 
 
@@ -562,7 +570,7 @@ PyTypeObject ServerType = {
     0,		               /* tp_iter */
     0,		               /* tp_iternext */
     Server_method,             /* tp_methods */
-    0,                      /* tp_members */
+    Server_members,             /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */

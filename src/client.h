@@ -46,7 +46,7 @@ typedef struct {
 
 
 PyObject * 
-Client_New(int fd, char *remote_addr, int remote_port);
+Client_New(PyObject *server, int fd, char *remote_addr, int remote_port);
 
 void 
 Client_exec_parse(Client *self, char *buf, size_t read_length);

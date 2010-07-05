@@ -29,6 +29,7 @@ typedef struct {
     int port;
     int listen_fd;
     picoev_loop *main_loop;
+    char binary_protocol;
 } ServerObject;
 
 
@@ -48,8 +49,6 @@ void
 request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas);
 
 int loop_done;
-
-bool binary_protocol;
 
 #endif
 

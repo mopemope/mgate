@@ -8,7 +8,7 @@ class Simple(Server):
     cas_seq = dict()
 
     def get(self, env):
-        #print env
+        print env
         k = env['key']
         #return self.cache[k]
         #print "get:" + k
@@ -97,6 +97,7 @@ class Simple(Server):
 if __name__ == '__main__':
     
     server = Simple()
+    server.binary = True
     server.listen("0.0.0.0", 5000)
     server.run()
 
