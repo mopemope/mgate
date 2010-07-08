@@ -595,6 +595,7 @@ init_text_parser(Client *pyclient)
     client_t *client = pyclient->client;
     memtext_callback *callback;    
     callback = (memtext_callback *)PyMem_Malloc(sizeof(memtext_callback)); 
+    memset(callback, 0, sizeof(memtext_callback));
     callback->cmd_get = retrieval_callback; 
     callback->cmd_gets = retrieval_callback; 
     callback->cmd_set = storage_callback;
@@ -608,6 +609,7 @@ init_text_parser(Client *pyclient)
     callback->cmd_decr = numeric_callback;
 
     client->parser = (memtext_parser *)PyMem_Malloc(sizeof(memtext_parser));
+    memset(client->parser, 0, sizeof(memtext_parser));
     client->callback = callback;
 
     memtext_init(client->parser, client->callback, pyclient);

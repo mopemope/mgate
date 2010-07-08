@@ -1,183 +1,21 @@
 #include "server.h"
 #include "parser.h"
 #include "b_parser.h"
+#include "response.h"
 
 #define BUFSIZE 4096
-
-
-static int
-request_retrieval(Client *client, PyObject *env, char *key, size_t key_len, char *data, size_t data_len, unsigned short flags, uint64_t cas_unique);
 
 int 
 write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned short flags, uint64_t cas_unique);
 
-static void
-send_server_error(Client *client, char *error)
-{
-    struct iovec iov[3];
-
-    iov[0].iov_base = "SERVER_ERROR ";
-    iov[0].iov_len = 13;
-
-    iov[1].iov_base = error;
-    iov[1].iov_len = strlen(error);
-
-    iov[2].iov_base = "\r\n";
-    iov[2].iov_len = 2;
-    
-    if(writev(client->fd, iov, 3) < 0){
-        //error
-        //printf("send error!\n");
-        return;
-    }
-    //printf("error %s \n" , error);
-    
-}
-
 void 
 write_error_response(Client *client, char *msg)
 {
-    send_server_error(client, msg);
-}
-
-static int 
-request_simple(Client *client, PyObject *env, char *data, size_t data_len)
-{
-
-    size_t total = 0;
-    struct iovec *iov;
-    iov = (struct iovec *)PyMem_Malloc(sizeof(struct iovec) * 1);
- 
-    iov[0].iov_base = data;
-    iov[0].iov_len = data_len;
-    total += iov[0].iov_len;
-
-    request_send_data(client, env, iov, 1, total, false);
-
-    return 1;
-}
-
-static int 
-request_numeric(Client *client, PyObject *env, char *data, size_t data_len)
-{
-    size_t total = 0;
-    struct iovec *iov;
-    iov = (struct iovec *)PyMem_Malloc(sizeof(struct iovec) * 2);
- 
-    iov[0].iov_base = data;
-    iov[0].iov_len = data_len;
-    total += iov[0].iov_len;
-
-    iov[1].iov_base = "\r\n";
-    iov[1].iov_len = 2;
-    total += iov[1].iov_len;
-
-    request_send_data(client, env, iov, 2, total, false);
-
-    return 1;
-
+    text_error_response(client, msg);
 }
 
 
-static int
-request_retrieval(Client *client, PyObject *env, char *key, size_t key_len, char *data, size_t data_len, unsigned short flags, uint64_t cas_unique)
-{
-    size_t total = 0;
-    struct iovec *iov;
-    int iov_cnt = 7;
-    bool end = 0;
-    int index = 0;
-    
-    if(client->key_num == 1){
-        //last
-        iov_cnt = 8;
-        end = 1;
-    }
-    if(cas_unique > 0){
-        iov_cnt++;
-    }
-    
-    iov = (struct iovec *)PyMem_Malloc(sizeof(struct iovec) * iov_cnt);
-    
-    //1
-    iov[index].iov_base = "VALUE ";
-    iov[index].iov_len = 6;
-    total += iov[index].iov_len;
-    index++;
-    
-    //2
-    iov[index].iov_base = key;
-    iov[index].iov_len = key_len;
-    total += iov[index].iov_len;
-    index++;
-
-    char *flag_str = PyMem_Malloc(sizeof(char) * 32);
-    sprintf(flag_str, " %d ", flags);
-    
-    //3
-    iov[index].iov_base = flag_str;
-    iov[index].iov_len = strlen(flag_str);
-    total += iov[index].iov_len;
-    index++;
-
-    char *data_len_str = PyMem_Malloc(sizeof(char) * 32);
-    sprintf(data_len_str, "%d ", data_len);
-    
-    //4
-    iov[index].iov_base = data_len_str;
-    iov[index].iov_len = strlen(data_len_str);
-    total += iov[index].iov_len;
-    index++;
-    
-    if(cas_unique > 0){
-        char *cas_unique_str = PyMem_Malloc(sizeof(char) * 64);
-        sprintf(cas_unique_str, "%lld ", cas_unique);
-        //
-        iov[index].iov_base = cas_unique_str;
-        iov[index].iov_len = strlen(cas_unique_str);
-        total += iov[index].iov_len;
-        index++;
-    }
-
-    //5
-    iov[index].iov_base = "\r\n";
-    iov[index].iov_len = 2;
-    total += iov[index].iov_len;
-    index++;
-    
-    //6
-    iov[index].iov_base = data;
-    iov[index].iov_len = data_len;
-    total += iov[index].iov_len;
-    index++;
-    
-    // 7
-    iov[index].iov_base = "\r\n";
-    iov[index].iov_len = 2;
-    total += iov[index].iov_len;
-    index++;
-
-    if(end){
-#ifdef DEBUG
-        //printf("END write key addr=%p key=%s, total=%d\n", iov[1].iov_base, iov[1].iov_base, total);
-        //printf("END write data addr=%p data=%s, total=%d\n", iov[4].iov_base, iov[4].iov_base, total);
-#endif 
-        //8
-        iov[index].iov_base = "END\r\n";
-        iov[index].iov_len = 5;
-        total += iov[index].iov_len;
-    }else{
-#ifdef DEBUG
-        //printf("write key addr=%p key=%s, total=%d\n", iov[1].iov_base, iov[1].iov_base, total);
-        //printf("write data addr=%p data=%s, total=%d\n", iov[4].iov_base, iov[4].iov_base, total);
-#endif 
-    }
-    request_send_data(client, env, iov, iov_cnt, total, cas_unique > 0);
-    client->key_num--;
-    return 1;
-}
-
-static int
+static inline int
 buf_write(client_t *client, const char *c, size_t  l) {
     size_t newl;
     char *newbuf;
@@ -212,6 +50,7 @@ client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
     client_t *client;
     ServerObject *server;
     client = PyMem_Malloc(sizeof(client_t)); 
+    memset(client, 0, sizeof(client_t));
     client->fd = fd;
     client->input_buf = malloc(sizeof(char) * BUFSIZE);
     client->input_buf_size = sizeof(char) * BUFSIZE;
@@ -220,7 +59,7 @@ client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
     pyclient->client = client;
-    server = pyclient->server;
+    server = (ServerObject *)pyclient->server;
 
     if(server->binary_protocol){
         init_binary_parser(pyclient);
@@ -278,7 +117,7 @@ write_numeric(Client *client, PyObject *env, PyObject *response)
         //TODO raise Error
         goto error;
     }
-    ret = request_numeric(client, env, data, data_len);
+    ret = text_numeric_response(client, env, data, data_len);
     Py_XDECREF(str_response);
     //Py_DECREF(response);
     return ret;
@@ -318,7 +157,7 @@ write_delete(Client *client, PyObject *env, PyObject *response)
         //TODO raise Error
         goto error;
     }
-    ret = request_simple(client, env, data, data_len);
+    ret = text_simple_response(client, env, data, data_len);
     if(ret < 0){
         //write_error
         //raise Error
@@ -367,7 +206,7 @@ write_storage(Client *client, PyObject *env, PyObject *response)
         //TODO raise Error
         goto error;
     }
-    ret = request_simple(client, env, data, data_len);
+    ret = text_simple_response(client, env, data, data_len);
     if(ret < 0){
         //write_error
         //raise Error
@@ -483,7 +322,7 @@ write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned shor
     printf("request_retrieval \n");
 #endif
 
-    ret = request_retrieval(client, env, key, key_len, data, data_len, flags, cas_unique);
+    ret = text_get_response(client, env, key, key_len, data, data_len, flags, cas_unique);
     if(ret < 0){
         //write_error
         //raise Error
@@ -615,6 +454,7 @@ Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
     self->key_num = 0;
     self->data = NULL;
     self->server = server;
+    self->binary_protocol = ((ServerObject *)server)->binary_protocol;
     client_t_new(self, fd, remote_addr, remote_port);
     return (PyObject *)self;
 }
@@ -622,12 +462,10 @@ Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
 static void
 Client_dealloc(Client* self)
 {
-    //printf("call dealloc \n");
     self->server = NULL;
     self->client = NULL;
     self->key_num = 0;
     self->data = NULL;
-    //self->env = NULL;
     PyObject_DEL(self);
 }
 

@@ -27,12 +27,13 @@ setup(name='mgate',
         ext_modules = [
             Extension('mgate',
             sources=['src/server.c', 'src/picoev_epoll.c', 'src/parser.c',
-            'src/client.c', 'src/memproto/memtext.c','src/memproto/memproto.c','src/b_parser.c', ],
+            'src/client.c', 'src/memproto/memtext.c','src/memproto/memproto.c',
+            'src/b_parser.c', 'src/response.c'],
             #'src/mc_client.c', 'src/mc_consistent.c', 'src/mc_net.c'],
             include_dirs=include_dirs,
             library_dirs=library_dirs,
             #libraries=["profiler"],
-            extra_compile_args=["-DDEBUG"],
+            #extra_compile_args=["-DDEBUG"],
             )
         ]
 )

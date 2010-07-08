@@ -212,6 +212,7 @@ request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt,
 #endif
     server = (ServerObject *)client->server;
     new_data = PyMem_Malloc(sizeof(write_data));
+    memset(new_data, 0, sizeof(write_data));
     new_data->env = env;
     new_data->next = NULL;
     new_data->fd = client->fd;
@@ -378,6 +379,7 @@ typedef struct {
 	PyObject *dict;
 } proxyobject;
 
+/*
 static PyObject *
 Server_memclient(ServerObject *self, PyObject *args)
 {
@@ -389,7 +391,7 @@ Server_memclient(ServerObject *self, PyObject *args)
     PyObject *memclient = MemClient_New(self, list);
     return memclient;
 
-}
+}*/
 
 static PyObject * 
 Server_write(ServerObject *self, PyObject *args)

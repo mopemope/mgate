@@ -1,12 +1,11 @@
-#ifndef client_h
-#define client_h
+#ifndef CLIENT_H
+#define CLIENT_H
 
 #include <string.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include "memproto/memtext.h"
 #include "memproto/memproto.h"
-
 
 typedef struct iovec iovec_t;
 
@@ -31,7 +30,7 @@ typedef struct {
     int fd;
     int key_num;
     void *data;
-    bool binary;
+    char binary_protocol;
 } Client;
 
 typedef struct {
@@ -65,5 +64,27 @@ write_response(Client *client, PyObject *env, PyObject *response);
 
 void 
 write_error_response(Client *client, char *msg);
+
+
+typedef union {
+    struct {
+        uint8_t magic;
+        uint8_t opcode;
+        uint8_t data_type;
+        uint16_t reserved;
+        uint32_t opaque;
+        uint64_t cas;
+    } header;
+    uint8_t bytes[24];
+} response_header;
+
+
+typedef union {
+    struct {
+        response_header header;
+    } message;
+    uint8_t bytes[sizeof(response_header)];
+} response;
+
 
 #endif
