@@ -54,18 +54,10 @@ client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
     client->fd = fd;
     client->input_buf = malloc(sizeof(char) * BUFSIZE);
     client->input_buf_size = sizeof(char) * BUFSIZE;
-    client->input_pos = 0;
-    client->input_len = 0;
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
     pyclient->client = client;
     server = (ServerObject *)pyclient->server;
-
-    if(server->binary_protocol){
-        init_binary_parser(pyclient);
-    }else{
-        init_text_parser(pyclient);
-    }
 }
 
 static void
@@ -392,7 +384,18 @@ Client_exec_parse(Client *self, char *buf, size_t read_length)
     server = self->server;
 
     buf_write(client, buf, read_length);
-    if(server->binary_protocol){
+    
+    if(!client->parser){
+        //
+        if(buf[0] == 0x80){
+            init_binary_parser(self);
+            self->binary_protocol = 1;
+        }else{
+            init_text_parser(self);
+        }
+    }
+
+    if(self->binary_protocol){
         execute_binray_parse(self, client->input_buf, client->input_len, &(client->input_pos));
     }else{
         execute_text_parse(self, client->input_buf, client->input_len, &(client->input_pos));
@@ -416,11 +419,7 @@ Client_clear(Client *self)
     self->key_num = 0;
     self->data = NULL;
     //PyDict_Clear(self->env);
-    if(server->binary_protocol){
-        init_binary_parser(self);
-    }else{
-        init_text_parser(self);
-    }
+    self->binary_protocol = 0;
 }
 
 

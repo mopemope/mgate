@@ -2,11 +2,11 @@
 #include "structmember.h"
 
 
-#define MAX_FDS 1024
+#define MAX_FDS 1024 * 4
 #define TIMEOUT_SECS 1
 
-#define BACKLOG 1024    
-#define MAX_BUFSIZE 4096
+#define BACKLOG 1024 * 4
+#define MAX_BUFSIZE 8192
 
 char *stored_response[] = {
     STORED,
@@ -310,6 +310,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         ssize_t r;
         r = read(fd, buf, sizeof(buf));
         switch (r) {
+            /*
             case 0: 
 #ifdef DEBUG
                 printf("read callback close %d\n", fd);
@@ -318,6 +319,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 Client_close(client);
 
                 break;
+            */
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
 #ifdef DEBUG
@@ -363,7 +365,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             setup_sock(client_fd);
             remote_addr = inet_ntoa (client_addr.sin_addr);
             remote_port = ntohs(client_addr.sin_port);
-            client = (Client *)Client_New(server, client_fd, remote_addr, remote_port);
+            client = (Client *)Client_New((PyObject *)server, client_fd, remote_addr, remote_port);
             if(!client){
                 //TODO ERROR
             }

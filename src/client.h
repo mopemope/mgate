@@ -18,7 +18,7 @@ typedef struct {
     size_t input_pos;
     size_t input_len;
     void *parser;
-    void *callback;          
+    void *callback;
     //memtext_parser *parser;
     //memtext_callback *callback;          
 } client_t;
@@ -30,7 +30,7 @@ typedef struct {
     int fd;
     int key_num;
     void *data;
-    char binary_protocol;
+    uint8_t binary_protocol;
 } Client;
 
 typedef struct {
