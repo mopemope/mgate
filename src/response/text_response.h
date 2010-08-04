@@ -1,8 +1,8 @@
-#ifndef RESPONSE_H
-#define RESPONSE_H
+#ifndef TEXT_RESPONSE_H
+#define TEXT_RESPONSE_H
 
 #include <Python.h>
-#include "client.h"
+#include "../client.h"
 
 void 
 text_error_response(Client *client, char *msg);

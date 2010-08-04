@@ -510,10 +510,6 @@ Server_run(ServerObject *self){
     
     self->main_loop = main_loop;
 
-
-#ifdef DEBUG
-    printf("binary_protocol %d\n", self->binary_protocol);
-#endif
     /* add listen socket */
     picoev_add(main_loop, self->listen_fd, PICOEV_READ, 0, accept_callback, self);
     /* loop */
@@ -531,7 +527,6 @@ Server_run(ServerObject *self){
 }
 
 static PyMemberDef Server_members[] = {
-    {"binary_protocol", T_BOOL, offsetof(ServerObject, binary_protocol), 0, "binary_protocol"},
     {NULL} 
 };
 
@@ -586,7 +581,7 @@ PyTypeObject ServerType = {
     PyType_GenericNew,                         /* tp_new */
 };
 
-static PyMethodDef MemprotoMethods[] = {
+static PyMethodDef MGateMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -598,7 +593,7 @@ initmgate(void)
     if(PyType_Ready(&ServerType) < 0)
         return;
     
-    m = Py_InitModule3("mgate", MemprotoMethods, "");
+    m = Py_InitModule3("mgate", MGateMethods, "");
     if(m == NULL)
         return;
 

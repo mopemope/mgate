@@ -29,7 +29,6 @@ typedef struct {
     int port;
     int listen_fd;
     picoev_loop *main_loop;
-    char binary_protocol;
 } ServerObject;
 
 

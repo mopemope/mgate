@@ -1,4 +1,5 @@
-#include "response.h"
+#include "../server.h"
+#include "text_response.h"
 
 
 static void

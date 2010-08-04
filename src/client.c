@@ -1,7 +1,7 @@
 #include "server.h"
 #include "parser/text_parser.h"
 #include "parser/binary_parser.h"
-#include "response.h"
+#include "response/text_response.h"
 
 #define BUFSIZE 8192
 
@@ -381,7 +381,7 @@ Client_exec_parse(Client *self, char *buf, size_t read_length)
     client_t *client;
     ServerObject *server;
     client = self->client;
-    server = self->server;
+    server = (ServerObject *)self->server;
 
     buf_write(client, buf, read_length);
     
@@ -408,7 +408,6 @@ Client_clear(Client *self)
 #ifdef DEBUG
     printf("clear fd = %d\n", self->fd);
 #endif
-    ServerObject *server = (ServerObject *)self->server;
     client_t *client;
     client = self->client;
     free_client_field(client);
@@ -453,7 +452,6 @@ Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
     self->key_num = 0;
     self->data = NULL;
     self->server = server;
-    self->binary_protocol = ((ServerObject *)server)->binary_protocol;
     client_t_new(self, fd, remote_addr, remote_port);
     return (PyObject *)self;
 }
