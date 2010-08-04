@@ -1,9 +1,9 @@
 #include "server.h"
-#include "parser.h"
-#include "b_parser.h"
+#include "parser/text_parser.h"
+#include "parser/binary_parser.h"
 #include "response.h"
 
-#define BUFSIZE 4096
+#define BUFSIZE 8192
 
 int 
 write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned short flags, uint64_t cas_unique);

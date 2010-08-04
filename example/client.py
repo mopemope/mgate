@@ -32,7 +32,7 @@ if __name__ == '__main__':
     #print t.repeat(number=1000)
     
     t = Timer("test_py()", "from __main__ import test_py")
-    print t.repeat(number=1000)
+    print t.repeat(number=10)
     
     #t = Timer("test_cas()", "from __main__ import test_cas")
     #print t.repeat(number=1000)

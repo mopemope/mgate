@@ -1,4 +1,4 @@
-#include "server.h"
+#include "../server.h"
 
 static int
 set_base_env(PyObject *env, Client *pyclient, memproto_header *h)

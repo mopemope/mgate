@@ -1,4 +1,4 @@
-#include "server.h"
+#include "../server.h"
 
 static int
 set_get_env_internal(PyObject *env, char *c_key, size_t c_key_len);
