@@ -2,7 +2,7 @@
 #include "text_response.h"
 
 
-static void
+static inline void
 text_error(Client *client, char *error)
 {
     struct iovec iov[3];
@@ -25,13 +25,13 @@ text_error(Client *client, char *error)
     
 }
 
-void 
+inline void 
 text_error_response(Client *client, char *msg)
 {
     text_error(client, msg);
 }
 
-int 
+inline int 
 text_simple_response(Client *client, PyObject *env, char *data, size_t data_len)
 {
 
@@ -48,7 +48,7 @@ text_simple_response(Client *client, PyObject *env, char *data, size_t data_len)
     return 1;
 }
 
-int 
+inline int 
 text_numeric_response(Client *client, PyObject *env, char *data, size_t data_len)
 {
     size_t total = 0;
@@ -70,7 +70,7 @@ text_numeric_response(Client *client, PyObject *env, char *data, size_t data_len
 }
 
 
-int
+inline int
 text_get_response(Client *client, PyObject *env, char *key, size_t key_len, char *data, size_t data_len, unsigned short flags, uint64_t cas_unique)
 {
     size_t total = 0;
@@ -158,3 +158,4 @@ text_get_response(Client *client, PyObject *env, char *key, size_t key_len, char
     client->key_num--;
     return 1;
 }
+
