@@ -2,10 +2,10 @@
 #include "structmember.h"
 #include "util.h"
 
-#define MAX_FDS 1024 * 4
+#define MAX_FDS 1024 * 8
 #define TIMEOUT_SECS 1
 
-#define BACKLOG 1024 * 4
+#define BACKLOG 1024 * 8
 #define MAX_BUFSIZE 8192
 
 char *stored_response[] = {
@@ -296,7 +296,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     } else if ((events & PICOEV_READ) != 0) {
 
         /* update timeout, and read */
-        picoev_set_timeout(loop, client->fd, 1);
+        picoev_set_timeout(loop, client->fd, TIMEOUT_SECS);
         char buf[MAX_BUFSIZE];
         ssize_t r;
         r = read(fd, buf, sizeof(buf));
