@@ -350,7 +350,6 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         socklen_t client_len = sizeof(client_addr);
         client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
 
-
         if (client_fd != -1) {
             setup_sock(client_fd);
             remote_addr = inet_ntoa (client_addr.sin_addr);
@@ -361,6 +360,12 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             }
             //client->server = (PyObject *)server;
             picoev_add(loop, client_fd, PICOEV_READ, TIMEOUT_SECS, read_callback, client);
+        }else{
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                PyErr_SetFromErrno(PyExc_IOError);
+                // die
+                loop_done = 0;
+            }
         }
     }
 }
@@ -385,7 +390,7 @@ Server_memclient(ServerObject *self, PyObject *args)
 
 }*/
 
-static PyObject * 
+static inline PyObject * 
 Server_write(ServerObject *self, PyObject *args)
 {
     PyObject *client;
@@ -504,10 +509,7 @@ Server_run(ServerObject *self){
     picoev_add(main_loop, self->listen_fd, PICOEV_READ, 0, accept_callback, self);
     /* loop */
     while (loop_done) {
-        if(picoev_loop_once(main_loop, 10) < 0){
-            //loop error
-            loop_done = 0;
-        }
+        picoev_loop_once(main_loop, 10);
     }
     
     picoev_destroy_loop(main_loop);
