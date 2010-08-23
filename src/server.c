@@ -48,7 +48,7 @@ sigpipe_cb(int signum)
 
 
 static inline int
-send_writev(write_data *data)
+send_writev(write_bucket *data)
 {
     size_t w;
     int i = 0;
@@ -103,7 +103,7 @@ send_writev(write_data *data)
 }
 
 static inline void
-clear_write_data(write_data *data)
+clear_write_bucket(write_bucket *data)
 {
     if(data && data->iov){
         if(data->iov_cnt > 6){
@@ -132,7 +132,7 @@ write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     int ret;
     Client *client = (Client *)(cb_arg);
-    write_data *data = client->data;
+    write_bucket *data = client->data;
 
 #ifdef DEBUG
     printf("write callback %d\n", fd);
@@ -146,7 +146,7 @@ write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #endif
         write_error_response(client, "timeout"); 
         picoev_del(loop, fd);
-        clear_write_data(data);
+        clear_write_bucket(data);
         Client_close(client);
     
     } else if ((events & PICOEV_WRITE) != 0) {
@@ -159,24 +159,22 @@ write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             case -1:
                 //send fatal error
                 picoev_del(loop, fd);
-                clear_write_data(data);
+                clear_write_bucket(data);
                 Client_close(client);
                 
                 break;
             default:
                 //ok
                 if(data->next){
-                    write_data *next = data->next;
+                    write_bucket *next = data->next;
                     data->next = NULL;
-                    clear_write_data(data);
+                    clear_write_bucket(data);
                     client->data = next;
                 }else{
                     client->data = NULL;
-                    clear_write_data(data);
+                    clear_write_bucket(data);
                 }
                 if(client->data == NULL){
-#ifdef DEBUG
-#endif
                     //send END
                     Client_clear(client);
                     picoev_del(loop, fd);
@@ -194,7 +192,7 @@ inline void
 request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas)
 {    
     picoev_loop *loop;
-    write_data *new_data;
+    write_bucket *new_data;
     ServerObject *server;
     
 #ifdef DEBUG
@@ -202,8 +200,8 @@ request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt,
     //printf("client fd = %d key_num %d\n", fd, client->key_num);
 #endif
     server = (ServerObject *)client->server;
-    new_data = PyMem_Malloc(sizeof(write_data));
-    memset(new_data, 0, sizeof(write_data));
+    new_data = PyMem_Malloc(sizeof(write_bucket));
+    memset(new_data, 0, sizeof(write_bucket));
     new_data->env = env;
     new_data->next = NULL;
     new_data->fd = client->fd;
@@ -217,7 +215,7 @@ request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt,
         client->data = new_data;
         add = 1;
     }else{
-        write_data *current;
+        write_bucket *current;
         current = client->data;
         while(1){
             if(current->next){

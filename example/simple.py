@@ -8,7 +8,7 @@ class Simple(Server):
     cas_seq = dict()
 
     def get(self, env):
-        print env
+        #print env
         k = env['key']
         #return self.cache[k]
         #print "get:" + k
@@ -36,14 +36,14 @@ class Simple(Server):
         self.write(env, True)
 
     def delete(self, env):
-        print env
+        #print env
         k = env['key']
         if self.cache.has_key(k):
             del self.cache[k]
         self.write(env, True)
 
     def incr(self, env):
-        print env
+        #print env
         v = env['value']
         self.write(env, v+1)
 

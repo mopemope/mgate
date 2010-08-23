@@ -42,7 +42,7 @@ typedef struct {
     void *next;
     bool cas;
     PyObject *env;
-} write_data;
+} write_bucket;
 
 
 inline PyObject * 
