@@ -67,6 +67,7 @@ void
 write_error_response(Client *client, char *msg);
 
 
+/*
 typedef union {
     struct {
         uint8_t magic;
@@ -86,6 +87,6 @@ typedef union {
     } message;
     uint8_t bytes[sizeof(response_header)];
 } response;
-
+*/
 
 #endif

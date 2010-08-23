@@ -415,7 +415,7 @@ Server_write(ServerObject *self, PyObject *args)
 
 }
 
-static PyObject * 
+static inline PyObject * 
 Server_listen(ServerObject *self, PyObject *args)
 {
     char *server_name;
@@ -426,7 +426,7 @@ Server_listen(ServerObject *self, PyObject *args)
     char strport[7];
     int listen_fd;
     
-    if(!PyArg_ParseTuple(args, "si", &server_name, &server_port)){
+    if(!PyArg_ParseTuple(args, "si:listen", &server_name, &server_port)){
         //TODO
         return NULL;
     }
@@ -440,47 +440,45 @@ Server_listen(ServerObject *self, PyObject *args)
     snprintf(strport, sizeof (strport), "%d", server_port);
     
     if ((rv = getaddrinfo(server_name, strport, &hints, &servinfo)) == -1) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        exit(1);
+        PyErr_SetFromErrno(PyExc_IOError);
+        return NULL;
     }
 
     // loop through all the results and bind to the first we can
     for(p = servinfo; p != NULL; p = p->ai_next) {
         if ((listen_fd = socket(p->ai_family, p->ai_socktype,
                 p->ai_protocol)) == -1) {
-            perror("server: socket");
             continue;
         }
 
         if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &flag,
                 sizeof(int)) == -1) {
-            perror("setsockopt");
-            exit(1);
+            close(listen_fd);
+            PyErr_SetFromErrno(PyExc_IOError);
+            return NULL;
         }
 
         if (bind(listen_fd, p->ai_addr, p->ai_addrlen) == -1) {
             close(listen_fd);
-            perror("server: bind");
-            continue;
+            PyErr_SetFromErrno(PyExc_IOError);
+            return NULL;
         }
 
         break;
     }
 
     if (p == NULL)  {
-        fprintf(stderr, "server: failed to bind\n");
-        exit(1);
+        close(listen_fd);
+        PyErr_SetString(PyExc_IOError,"server: failed to bind\n");
+        return NULL;
     }
 
-    freeaddrinfo(servinfo); // all done with this structure
+    freeaddrinfo(servinfo);
     
-    // BACKLOG 1024
     if (listen(listen_fd, BACKLOG) == -1) {
-        perror("listen");
-        exit(1);
+        PyErr_SetFromErrno(PyExc_IOError);
+        return NULL;
     }
-    setup_sock(listen_fd);
-    //printf("listen on %s:%i\n", server_name, server_port);
     self->listen_fd = listen_fd;
     Py_RETURN_NONE;
 }
