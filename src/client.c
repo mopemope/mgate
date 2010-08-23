@@ -390,8 +390,15 @@ Client_exec_parse(Client *self, char *buf, size_t read_length)
         if(buf[0] == 0x80){
             init_binary_parser(self);
             self->binary_protocol = 1;
+#ifdef DEBUG
+            printf("use binary protocol \n");
+#endif
         }else{
             init_text_parser(self);
+            self->binary_protocol = 0;
+#ifdef DEBUG
+            printf("use text protocol");
+#endif
         }
     }
 

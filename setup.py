@@ -26,14 +26,15 @@ setup(name='mgate',
         packages= find_packages(),
         ext_modules = [
             Extension('mgate',
-            sources=['src/server.c', 'src/picoev_epoll.c', 'src/parser/text_parser.c',
-            'src/client.c', 'src/memproto/memtext.c','src/memproto/memproto.c',
-            'src/parser/binary_parser.c', 'src/response/text_response.c'],
+            sources=['src/server.c', 'src/picoev_epoll.c', 
+                'src/parser/text_parser.c', 'src/parser/binary_parser.c',
+                'src/client.c', 'src/memproto/memtext.c','src/memproto/memproto.c',
+                'src/response/text_response.c'],
             #'src/mc_client.c', 'src/mc_consistent.c', 'src/mc_net.c'],
             include_dirs=include_dirs,
             library_dirs=library_dirs,
             #libraries=["profiler"],
-            #extra_compile_args=["-DDEBUG"],
+            extra_compile_args=["-DDEBUG"],
             )
         ]
 )

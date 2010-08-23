@@ -310,7 +310,6 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         ssize_t r;
         r = read(fd, buf, sizeof(buf));
         switch (r) {
-            /*
             case 0: 
 #ifdef DEBUG
                 printf("read callback close %d\n", fd);
@@ -318,8 +317,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 picoev_del(loop, client->fd);
                 Client_close(client);
 
-                break;
-            */
+                return;
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
 #ifdef DEBUG
@@ -333,6 +331,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     write_error_response(client, "i/o error"); 
                     picoev_del(loop, client->fd);
                     Client_close(client);
+                    return;
                 }
                 break;
             default: 
