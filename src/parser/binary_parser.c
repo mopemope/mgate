@@ -1,6 +1,6 @@
 #include "../server.h"
 
-static int
+static inline int
 set_base_env(PyObject *env, Client *pyclient, memproto_header *h)
 {
     PyObject *key = PyString_FromString("cmd");
@@ -15,7 +15,7 @@ set_base_env(PyObject *env, Client *pyclient, memproto_header *h)
     return 1;
 }
 
-static int
+static inline int
 set_get_env(PyObject *env, const char *c_key, uint16_t c_key_len)
 {
     int ret = 0;
@@ -27,7 +27,7 @@ set_get_env(PyObject *env, const char *c_key, uint16_t c_key_len)
     return ret;
 }
 
-static int
+static inline int
 set_storage_env(PyObject *env, const char* key, uint16_t keylen, 
         const char* val, uint32_t vallen, uint32_t flags, uint32_t expiration)
 {
@@ -61,7 +61,7 @@ set_storage_env(PyObject *env, const char* key, uint16_t keylen,
     
 }
 
-static int
+static inline int
 set_append_env(PyObject *env, const char* key, uint16_t keylen, 
         const char* val, uint32_t vallen)
 {
@@ -84,7 +84,7 @@ set_append_env(PyObject *env, const char* key, uint16_t keylen,
     
 }
 
-static int
+static inline int
 set_delete_env(PyObject *env, const char* key, uint16_t keylen, uint32_t expiration)
 {
     int ret = 0;
@@ -105,7 +105,7 @@ set_delete_env(PyObject *env, const char* key, uint16_t keylen, uint32_t expirat
     return ret;
 }
 
-void 
+static inline void 
 cb_get(void* user, memproto_header* h, const char* key, uint16_t keylen)
 {
 
@@ -141,29 +141,29 @@ error:
 
 }
 
-void 
+static inline void 
 cb_storage(void* user, memproto_header* h, const char* key, uint16_t keylen, 
         const char* val, uint32_t vallen, uint32_t flags, uint32_t expiration){
 }
 
-void
+static inline void
 cb_append(void* user, memproto_header* h, const char* key, uint16_t keylen,
 			const char* val, uint32_t vallen){
 }
 
-void 
+static inline void 
 cb_delete(void* user, memproto_header* h, const char* key, uint16_t keylen,
 			uint32_t expiration){
 }	
 
-void 
+static inline void 
 cb_numeric(void* user, memproto_header* h,
 			const char* key, uint16_t keylen,
 			uint64_t amount, uint64_t initial, uint32_t expiration){
 
 }
 
-void 
+inline void 
 init_binary_parser(Client *pyclient)
 {     
     client_t *client = pyclient->client;
@@ -197,7 +197,7 @@ init_binary_parser(Client *pyclient)
 
 }
 
-int 
+inline int 
 execute_binray_parse(Client *pyclient, const char* data, size_t len, size_t* off)
 {
     int ret = 0;
@@ -213,3 +213,5 @@ execute_binray_parse(Client *pyclient, const char* data, size_t len, size_t* off
 #endif
     return 0;
 }
+
+

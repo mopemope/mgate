@@ -5,10 +5,10 @@
 
 #define BUFSIZE 8192
 
-int 
+static inline int 
 write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned short flags, uint64_t cas_unique);
 
-void 
+inline void 
 write_error_response(Client *client, char *msg)
 {
     text_error_response(client, msg);
@@ -44,7 +44,7 @@ buf_write(client_t *client, const char *c, size_t  l) {
     return (int)l;
 }
 
-static void
+static inline void
 client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
 {
     client_t *client;
@@ -59,7 +59,7 @@ client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
     pyclient->client = client;
 }
 
-static void
+static inline void
 free_client_field(client_t *client)
 {
 
@@ -80,7 +80,7 @@ free_client_field(client_t *client)
     
 }
 
-int 
+static inline int 
 write_numeric(Client *client, PyObject *env, PyObject *response)
 {
     PyObject *str_response = NULL;
@@ -119,7 +119,7 @@ error:
     return 0;
 }
 
-int 
+static inline int 
 write_delete(Client *client, PyObject *env, PyObject *response)
 {
     PyObject *str_response = NULL;
@@ -164,7 +164,7 @@ error:
 
 }
 
-int 
+static inline int 
 write_storage(Client *client, PyObject *env, PyObject *response)
 {
     PyObject *str_response = NULL;
@@ -213,7 +213,7 @@ error:
 
 }
 
-int 
+static inline int 
 write_retrieval_flags(Client *client, PyObject *env, PyObject *response)
 {
     int ret;
@@ -272,7 +272,7 @@ write_retrieval_flags(Client *client, PyObject *env, PyObject *response)
     return ret;
 }
 
-int 
+static inline int 
 write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned short flags, uint64_t cas_unique)
 {
 #ifdef DEBUG
@@ -326,7 +326,7 @@ error:
     return 0;
 }
 
-int 
+inline int 
 write_response(Client *self, PyObject *env, PyObject *response)
 {
     int ret = -1;
@@ -374,7 +374,7 @@ write_response(Client *self, PyObject *env, PyObject *response)
 
 }
 
-void
+inline void
 Client_exec_parse(Client *self, char *buf, size_t read_length)
 {
     client_t *client;
@@ -408,7 +408,7 @@ Client_exec_parse(Client *self, char *buf, size_t read_length)
     }
 }
 
-void 
+inline void 
 Client_clear(Client *self)
 {
 #ifdef DEBUG
@@ -428,7 +428,7 @@ Client_clear(Client *self)
 }
 
 
-void
+inline void
 Client_close(Client *self)
 {
     client_t *client = self->client;
@@ -445,7 +445,7 @@ Client_close(Client *self)
 }
 
 
-PyObject *  
+inline PyObject *  
 Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
 {
     Client *self;
@@ -462,7 +462,7 @@ Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
     return (PyObject *)self;
 }
 
-static void
+static inline void
 Client_dealloc(Client* self)
 {
     self->server = NULL;
@@ -514,3 +514,4 @@ PyTypeObject ClientType = {
     0,                         /* tp_alloc */
     0,                           /* tp_new */
 };
+

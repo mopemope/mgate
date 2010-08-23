@@ -1,9 +1,9 @@
 #include "../server.h"
 
-static int
+static inline int
 set_get_env_internal(PyObject *env, char *c_key, size_t c_key_len);
 
-static void
+static inline void
 set_base_env(PyObject *env, Client *pyclient, memtext_command cmd)
 {
     PyObject *key = PyString_FromString("cmd");
@@ -18,7 +18,7 @@ set_base_env(PyObject *env, Client *pyclient, memtext_command cmd)
 
 }
 
-static int
+static inline int
 set_numeric_env(PyObject *env, memtext_request_numeric *req)
 {
     int ret=0;
@@ -51,7 +51,7 @@ set_numeric_env(PyObject *env, memtext_request_numeric *req)
     return ret;
 }
 
-static int
+static inline int
 set_delete_env(PyObject *env, memtext_request_delete *req)
 {
     int ret = 0;
@@ -82,7 +82,7 @@ set_delete_env(PyObject *env, memtext_request_delete *req)
     return ret;
 }
 
-static int
+static inline int
 set_get_env(PyObject *env, memtext_request_retrieval *req)
 {
     int ret = 0;
@@ -93,7 +93,7 @@ set_get_env(PyObject *env, memtext_request_retrieval *req)
     return ret;
 }
 
-static int
+static inline int
 set_get_env_internal(PyObject *env, char *c_key, size_t c_key_len)
 {
     int ret = 0;
@@ -105,7 +105,7 @@ set_get_env_internal(PyObject *env, char *c_key, size_t c_key_len)
     return ret;
 }
 
-static int
+static inline int
 set_storage_env(PyObject *env, memtext_request_storage *req)
 {
     int ret =0;
@@ -153,7 +153,7 @@ set_storage_env(PyObject *env, memtext_request_storage *req)
     
 }
 
-static int
+static inline int
 set_cas_env(PyObject *env, memtext_request_cas *req)
 {
     int ret =0;
@@ -210,7 +210,7 @@ set_cas_env(PyObject *env, memtext_request_cas *req)
     
 }
 
-static int
+static inline int
 storage(Client *pyclient, memtext_command cmd, memtext_request_storage *req)
 {
     PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
@@ -274,7 +274,7 @@ error:
 
 }
 
-static int
+static inline int
 cas(Client *pyclient, memtext_command cmd, memtext_request_cas *req)
 {
     PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
@@ -315,7 +315,7 @@ error:
 
 }
 
-static int
+static inline int
 delete(Client *pyclient, memtext_command cmd, memtext_request_delete *req)
 {
     PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
@@ -358,7 +358,7 @@ error:
 
 }
 
-static int 
+static inline int 
 get(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req, char *call_method)
 {
     PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
@@ -401,7 +401,7 @@ error:
 
 }
 
-static int 
+static inline int 
 get_multi(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req, char *call_method)
 {
     PyObject *server, *env, *proxy, *response=NULL, *method_name=NULL;
@@ -459,7 +459,7 @@ error:
 
 }
 
-static int
+static inline int
 numeric(Client *pyclient, memtext_command cmd, memtext_request_numeric *req)
 {
     PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
@@ -513,7 +513,7 @@ error:
 }
 
 
-static int 
+static inline int 
 retrieval_callback(void* user, memtext_command cmd, memtext_request_retrieval* req)
 {
     int ret = 0;
@@ -539,7 +539,7 @@ retrieval_callback(void* user, memtext_command cmd, memtext_request_retrieval* r
     return ret;
 }
 
-static int 
+static inline int 
 storage_callback(void* user, memtext_command cmd, memtext_request_storage* req)
 {
     int ret = 0;
@@ -552,7 +552,7 @@ storage_callback(void* user, memtext_command cmd, memtext_request_storage* req)
     return ret;
 }
 
-static int 
+static inline int 
 cas_callback(void* user, memtext_command cmd, memtext_request_cas* req)
 {
 
@@ -567,7 +567,7 @@ cas_callback(void* user, memtext_command cmd, memtext_request_cas* req)
     return 0;
 }
 
-static int 
+static inline int 
 delete_callback(void* user, memtext_command cmd, memtext_request_delete* req)
 {
 
@@ -579,7 +579,7 @@ delete_callback(void* user, memtext_command cmd, memtext_request_delete* req)
 }
 
 
-static int 
+static inline int 
 numeric_callback(void* user, memtext_command cmd, memtext_request_numeric* req)
 {
     int ret = 0;
@@ -589,7 +589,7 @@ numeric_callback(void* user, memtext_command cmd, memtext_request_numeric* req)
     return ret;
 }
 
-void 
+inline void 
 init_text_parser(Client *pyclient)
 {     
     client_t *client = pyclient->client;
@@ -616,7 +616,7 @@ init_text_parser(Client *pyclient)
     
 }
 
-int 
+inline int 
 execute_text_parse(Client *pyclient, const char* data, size_t len, size_t* off)
 {
     client_t *client = pyclient->client;
@@ -624,3 +624,4 @@ execute_text_parse(Client *pyclient, const char* data, size_t len, size_t* off)
     memtext_execute(parser, data, len, off);
     return 0;
 }
+

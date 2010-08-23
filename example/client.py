@@ -28,11 +28,11 @@ if __name__ == '__main__':
 
     from timeit import Timer
     
-    #t = Timer("test()", "from __main__ import test")
-    #print t.repeat(number=1000)
+    t = Timer("test()", "from __main__ import test")
+    print t.repeat(number=1000)
     
     t = Timer("test_py()", "from __main__ import test_py")
-    print t.repeat(number=10)
+    print t.repeat(number=1000)
     
     #t = Timer("test_cas()", "from __main__ import test_cas")
     #print t.repeat(number=1000)

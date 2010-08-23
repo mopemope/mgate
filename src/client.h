@@ -45,25 +45,25 @@ typedef struct {
 } write_data;
 
 
-PyObject * 
+inline PyObject * 
 Client_New(PyObject *server, int fd, char *remote_addr, int remote_port);
 
-void 
+inline void 
 Client_exec_parse(Client *self, char *buf, size_t read_length);
 
-void
+inline void
 Client_clear(Client *client);
 
-void
+inline void
 Client_close(Client *client);
 
 
 extern PyTypeObject ClientType;
 
-int 
+inline int 
 write_response(Client *client, PyObject *env, PyObject *response);
 
-void 
+inline void 
 write_error_response(Client *client, char *msg);
 
 

@@ -24,7 +24,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 int loop_done = 0;
 
 
-static int
+static inline int
 setsig(int sig, void* handler)
 {
     struct sigaction context, ocontext;
@@ -34,20 +34,20 @@ setsig(int sig, void* handler)
     return sigaction(sig, &context, &ocontext);
 }
 
-static void 
+static inline void 
 sigint_cb(int signum)
 {
     printf("Bye.\n");
     loop_done = 0;
 }
 
-static void 
+static inline void 
 sigpipe_cb(int signum)
 {
 }
 
 
-static int
+static inline int
 send_writev(write_data *data)
 {
     size_t w;
@@ -102,7 +102,7 @@ send_writev(write_data *data)
 
 }
 
-static void
+static inline void
 clear_write_data(write_data *data)
 {
     if(data && data->iov){
@@ -127,7 +127,7 @@ clear_write_data(write_data *data)
 }
 
 
-static void
+static inline void
 write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     int ret;
@@ -190,7 +190,7 @@ write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 }
 
 
-void
+inline void
 request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas)
 {    
     picoev_loop *loop;
@@ -234,7 +234,7 @@ request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt,
 }
 
 
-
+/*
 static void
 timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
@@ -248,6 +248,7 @@ timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     }
 
 }
+*/
 
 /*
 static void
@@ -278,7 +279,7 @@ write_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 }*/
 
 
-static void
+static inline void
 read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     Client *client = (Client *)(cb_arg);
@@ -334,7 +335,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 }
 
 
-static void
+static inline void
 accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     int client_fd;
@@ -489,7 +490,7 @@ Server_listen(ServerObject *self, PyObject *args)
 }
 
 
-static PyObject *
+static inline PyObject *
 Server_run(ServerObject *self){
 
     picoev_loop* main_loop; //main loop
