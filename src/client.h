@@ -1,6 +1,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include <Python.h>
 #include <string.h>
 #include <sys/uio.h>
 #include <unistd.h>

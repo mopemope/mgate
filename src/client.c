@@ -57,7 +57,6 @@ client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
     pyclient->client = client;
-    server = (ServerObject *)pyclient->server;
 }
 
 static void

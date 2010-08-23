@@ -1,6 +1,6 @@
 #include "server.h"
 #include "structmember.h"
-
+#include "util.h"
 
 #define MAX_FDS 1024 * 4
 #define TIMEOUT_SECS 1
@@ -23,15 +23,6 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 int loop_done = 0;
 
-static 
-void setup_sock(int fd)
-{
-    int on = 1, r;
-    r = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
-    assert(r == 0);
-    r = fcntl(fd, F_SETFL, O_NONBLOCK);
-    assert(r == 0);
-}
 
 static int
 setsig(int sig, void* handler)
@@ -508,6 +499,8 @@ Server_run(ServerObject *self){
     setsig(SIGINT, sigint_cb);
     
     self->main_loop = main_loop;
+    
+    setup_listen_sock(self->listen_fd);
 
     /* add listen socket */
     picoev_add(main_loop, self->listen_fd, PICOEV_READ, 0, accept_callback, self);

@@ -22,7 +22,6 @@
 #include "picoev.h"
 #include "client.h"
 
-
 typedef struct {
     PyObject_HEAD
     char *host;
