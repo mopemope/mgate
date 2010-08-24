@@ -42,6 +42,7 @@ typedef struct {
     void *next;
     bool cas;
     PyObject *env;
+    uint8_t binary_protocol;
 } write_bucket;
 
 

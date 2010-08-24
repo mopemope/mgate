@@ -105,22 +105,25 @@ send_writev(write_bucket *data)
 static inline void
 clear_write_bucket(write_bucket *data)
 {
-    if(data && data->iov){
-        if(data->iov_cnt > 6){
-            PyMem_Free(data->iov[2].iov_base);
-            PyMem_Free(data->iov[3].iov_base);
+    if(data->binary_protocol){
+    }else{
+        if(data && data->iov){
+            if(data->iov_cnt > 6){
+                PyMem_Free(data->iov[2].iov_base);
+                PyMem_Free(data->iov[3].iov_base);
+            }
+            if(data->cas){
+                PyMem_Free(data->iov[4].iov_base);
+            }
+            Py_XDECREF(data->env);
+            PyMem_Free(data->iov);
+            data->iov = NULL;
         }
-        if(data->cas){
-            PyMem_Free(data->iov[4].iov_base);
+        data->next = NULL;
+        if(data){
+            PyMem_Free(data);
+            data = NULL;
         }
-        Py_XDECREF(data->env);
-        PyMem_Free(data->iov);
-        data->iov = NULL;
-    }
-    data->next = NULL;
-    if(data){
-        PyMem_Free(data);
-        data = NULL;
     }
 
 
@@ -192,36 +195,35 @@ inline void
 request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas)
 {    
     picoev_loop *loop;
-    write_bucket *new_data;
+    write_bucket *new_bucket, *current;
     ServerObject *server;
     
 #ifdef DEBUG
-    //printf("key_num %d\n", client->key_num);
-    //printf("client fd = %d key_num %d\n", fd, client->key_num);
+    printf("client fd = %d key_num %d\n", client->fd, client->key_num);
 #endif
     server = (ServerObject *)client->server;
-    new_data = PyMem_Malloc(sizeof(write_bucket));
-    memset(new_data, 0, sizeof(write_bucket));
-    new_data->env = env;
-    new_data->next = NULL;
-    new_data->fd = client->fd;
-    new_data->iov = iov;
-    new_data->iov_cnt = iov_cnt;
-    new_data->total = total;
-    new_data->cas = cas;
+    new_bucket = PyMem_Malloc(sizeof(write_bucket));
+    memset(new_bucket, 0, sizeof(write_bucket));
+    new_bucket->env = env;
+    new_bucket->next = NULL;
+    new_bucket->fd = client->fd;
+    new_bucket->iov = iov;
+    new_bucket->iov_cnt = iov_cnt;
+    new_bucket->total = total;
+    new_bucket->cas = cas;
+    new_bucket->binary_protocol = client->binary_protocol;
     loop = server->main_loop;
     bool add =0;
     if(client->data == NULL){
-        client->data = new_data;
+        client->data = new_bucket;
         add = 1;
     }else{
-        write_bucket *current;
         current = client->data;
         while(1){
             if(current->next){
                 current = current->next;
             }else{
-                current->next = new_data;
+                current->next = new_bucket;
                 break;
             }
         }
