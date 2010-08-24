@@ -334,7 +334,12 @@ write_response(Client *self, PyObject *env, PyObject *response)
     PyObject *pcmd = PyDict_GetItemString(env, "cmd");
 
     memtext_command cmd = (memtext_command)PyInt_AsLong(pcmd);
-
+    
+    if(!self->tcp_cork){
+        //cork
+        enable_cork(self->fd);
+        self->tcp_cork = 1;
+    }
     switch(cmd){
         /*retrieval*/    
         case MEMTEXT_CMD_GET:
@@ -431,6 +436,7 @@ Client_clear(Client *self)
 inline void
 Client_close(Client *self)
 {
+    disable_cork(self->fd);
     client_t *client = self->client;
     free_client_field(client);
     PyMem_Free(client);

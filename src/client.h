@@ -32,6 +32,7 @@ typedef struct {
     int key_num;
     void *data;
     uint8_t binary_protocol;
+    uint8_t tcp_cork;
 } Client;
 
 typedef struct {
