@@ -10,9 +10,9 @@ inline void
 setup_sock(int fd);
 
 inline void 
-enable_cork(client_t *client);
+enable_cork(int fd);
 
 inline void 
-disable_cork(client_t *client);
+disable_cork(int fd);
 
 #endif
