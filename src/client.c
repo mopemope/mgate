@@ -475,7 +475,8 @@ Client_dealloc(Client* self)
 
 
 PyTypeObject ClientType = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0)
+	PyObject_HEAD_INIT(&PyType_Type)
+    0,
     "mgate.client",             /*tp_name*/
     sizeof(Client), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

@@ -532,7 +532,8 @@ static PyMethodDef Server_method[] = {
 };
 
 PyTypeObject ServerType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    PyObject_HEAD_INIT(&PyType_Type)
+    0,
     "mgate.Server",             /*tp_name*/
     sizeof(ServerObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -582,6 +583,8 @@ initmgate(void)
     PyObject *m;
     
     if(PyType_Ready(&ServerType) < 0)
+        return;
+    if(PyType_Ready(&ClientType) < 0)
         return;
     
     m = Py_InitModule3("mgate", MGateMethods, "");
