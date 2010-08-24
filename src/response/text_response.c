@@ -1,9 +1,11 @@
 #include "../server.h"
 #include "text_response.h"
 
+static inline int 
+write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned short flags, uint64_t cas_unique);
 
-static inline void
-text_error(Client *client, char *error)
+inline void
+text_error_response(Client *client, char *error)
 {
     struct iovec iov[3];
 
@@ -25,13 +27,7 @@ text_error(Client *client, char *error)
     
 }
 
-inline void 
-text_error_response(Client *client, char *msg)
-{
-    text_error(client, msg);
-}
-
-inline int 
+static inline int 
 text_simple_response(Client *client, PyObject *env, char *data, size_t data_len)
 {
 
@@ -48,7 +44,7 @@ text_simple_response(Client *client, PyObject *env, char *data, size_t data_len)
     return 1;
 }
 
-inline int 
+static inline int 
 text_numeric_response(Client *client, PyObject *env, char *data, size_t data_len)
 {
     size_t total = 0;
@@ -70,7 +66,7 @@ text_numeric_response(Client *client, PyObject *env, char *data, size_t data_len
 }
 
 
-inline int
+static inline int
 text_get_response(Client *client, PyObject *env, char *key, size_t key_len, char *data, size_t data_len, unsigned short flags, uint64_t cas_unique)
 {
     size_t total = 0;
@@ -159,3 +155,292 @@ text_get_response(Client *client, PyObject *env, char *key, size_t key_len, char
     return 1;
 }
 
+static inline int 
+write_numeric(Client *client, PyObject *env, PyObject *response)
+{
+    PyObject *str_response = NULL;
+    char *data;
+    Py_ssize_t data_len;
+    int ret;
+
+    if(PyInt_Check(response)){
+        str_response = PyObject_Str(response);
+    //}else if(PyString_Check(response)){
+    //    str_response = response;
+    }else if(PyBool_Check(response)){
+        //BOOL
+        if(!PyObject_IsTrue(response)){
+            str_response = PyString_FromString(NOT_FOUND); 
+        }else{
+            //???
+            goto error;
+        }
+    }else{
+        goto error;
+    }
+
+    if(PyString_AsStringAndSize(str_response, &data, &data_len)){
+        //TODO raise Error
+        goto error;
+    }
+    ret = text_numeric_response(client, env, data, data_len);
+    Py_XDECREF(str_response);
+    //Py_DECREF(response);
+    return ret;
+    
+error:
+    Py_XDECREF(str_response);
+    //Py_DECREF(response);
+    return 0;
+}
+
+static inline int 
+write_delete(Client *client, PyObject *env, PyObject *response)
+{
+    PyObject *str_response = NULL;
+    char *data;
+    Py_ssize_t data_len;
+    int ret;
+    
+    if(PyBool_Check(response)){
+        //BOOL
+        if(PyObject_IsTrue(response)){
+            str_response = PyString_FromString(DELETED);
+        }else{
+            str_response = PyString_FromString(NOT_FOUND); 
+        }
+    }else if(PyString_Check(response)){
+        str_response = response;
+        Py_INCREF(str_response);
+    }else{
+        //TODO error
+
+        goto error;
+    }
+
+    
+    if(PyString_AsStringAndSize(str_response, &data, &data_len)){
+        //TODO raise Error
+        goto error;
+    }
+    ret = text_simple_response(client, env, data, data_len);
+    if(ret < 0){
+        //write_error
+        //raise Error
+        goto error;
+    }
+    Py_XDECREF(str_response);
+    //Py_DECREF(response);
+    return ret;
+error:
+    Py_XDECREF(str_response);
+    //Py_DECREF(response);
+    return 0;
+
+}
+
+static inline int 
+write_storage(Client *client, PyObject *env, PyObject *response)
+{
+    PyObject *str_response = NULL;
+    char *data;
+    Py_ssize_t data_len;
+    int ret;
+
+#ifdef DEBUG
+    printf("call write_storage");
+#endif
+
+    if(PyBool_Check(response)){
+        //BOOL
+        if(PyObject_IsTrue(response)){
+            str_response = PyString_FromString(STORED);
+        }else{
+            str_response = PyString_FromString(NOT_STORED); 
+        }
+    }else if(PyString_Check(response)){
+        str_response = response;
+        //Py_INCREF(str_response);
+    }else{
+        //TODO error
+
+        goto error;
+    }
+
+    
+    if(PyString_AsStringAndSize(str_response, &data, &data_len)){
+        //TODO raise Error
+        goto error;
+    }
+    ret = text_simple_response(client, env, data, data_len);
+    if(ret < 0){
+        //write_error
+        //raise Error
+        goto error;
+    }
+    Py_XDECREF(str_response);
+    //Py_DECREF(response);
+    return ret;
+error:
+    Py_XDECREF(str_response);
+    //Py_DECREF(response);
+    return 0;
+
+}
+
+static inline int 
+write_retrieval_flags(Client *client, PyObject *env, PyObject *response)
+{
+    int ret;
+    int fd;
+    
+    PyObject *pcmd = PyDict_GetItemString(env, "cmd");
+    memtext_command cmd = (memtext_command)PyInt_AsLong(pcmd);
+    fd = client->fd;
+
+    if(PyTuple_Check(response)){
+        if(cmd == MEMTEXT_CMD_GET){
+            PyObject *data = PyTuple_GetItem(response, 0);
+            PyObject *flags = PyTuple_GetItem(response, 1);
+            if(PyErr_Occurred()){
+                Py_XDECREF(response);
+                return 0;
+            }
+            int c_flags = PyInt_AsLong(flags);
+#ifdef DEBUG
+            printf("flasg %d \n", c_flags);
+#endif
+            if(PyErr_Occurred()){
+                Py_XDECREF(response);
+                return 0;
+            }
+
+            Py_INCREF(data);
+            ret = write_retrieval(client, env, data, c_flags, 0);
+            //Py_XDECREF(flags);
+            //Py_XDECREF(response);
+        }else{
+            PyObject *data = PyTuple_GetItem(response, 0);
+            PyObject *flags = PyTuple_GetItem(response, 1);
+            PyObject *cas = PyTuple_GetItem(response, 2);
+            if(PyErr_Occurred()){
+                Py_XDECREF(response);
+                return 0;
+            }
+            int c_flags = PyInt_AsLong(flags);
+            uint64_t c_cas = PyInt_AsLong(cas);
+            if(PyErr_Occurred()){
+                Py_XDECREF(response);
+                return 0;
+            }
+            //Py_XDECREF(response);
+            Py_INCREF(data);
+            ret = write_retrieval(client, env, data, c_flags, c_cas);
+            //Py_XDECREF(flags);
+            //Py_XDECREF(response);
+        
+        }
+
+    }else{
+        ret = write_retrieval(client, env, response, 0, 0);
+    }
+    return ret;
+}
+
+static inline int 
+write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned short flags, uint64_t cas_unique)
+{
+#ifdef DEBUG
+    printf("call write_retrieval \n");
+#endif
+    PyObject *keyobj;
+    char *key, *data;
+    Py_ssize_t key_len, data_len;
+    int ret;
+    int fd;
+    
+    fd = client->fd;
+
+    if(!PyString_Check(response)){
+        //TODO raise Error
+        goto error;
+    }
+
+    //get key data
+    keyobj = PyDict_GetItemString(env, "key");
+    if(!keyobj){
+        goto error;
+    }
+
+
+    if(PyString_AsStringAndSize(keyobj, &key, &key_len)){
+        //TODO raise Error
+        goto error;
+    }
+    
+    //get response data
+    if(PyString_AsStringAndSize(response, &data, &data_len)){
+        //TODO raise Error
+        goto error;
+    }
+    
+#ifdef DEBUG
+    printf("request_retrieval \n");
+#endif
+
+    ret = text_get_response(client, env, key, key_len, data, data_len, flags, cas_unique);
+    if(ret < 0){
+        //write_error
+        //raise Error
+        goto error;
+    }
+    Py_DECREF(response);
+    return ret;
+error:
+    Py_DECREF(response);
+    return 0;
+}
+
+inline int 
+write_text_response(Client *self, PyObject *env, PyObject *response)
+{
+    int ret;
+    PyObject *pcmd = PyDict_GetItemString(env, "cmd");
+    memtext_command cmd = (memtext_command)PyInt_AsLong(pcmd);
+    switch(cmd){
+        /*retrieval*/    
+        case MEMTEXT_CMD_GET:
+            ret = write_retrieval_flags(self, env, response);
+            break;
+        case MEMTEXT_CMD_GETS:
+            ret = write_retrieval_flags(self, env, response);
+            break;
+        /* storage */
+        case MEMTEXT_CMD_SET:
+        case MEMTEXT_CMD_ADD:
+        case MEMTEXT_CMD_REPLACE:
+        case MEMTEXT_CMD_APPEND:
+        case MEMTEXT_CMD_PREPEND:
+            ret = write_storage(self, env, response);
+            break;
+        /* cas */
+        case MEMTEXT_CMD_CAS:
+            ret = write_storage(self, env, response);
+            break;
+        /* delete */
+        case MEMTEXT_CMD_DELETE:
+            ret = write_delete(self, env, response);
+            break;
+        /* numeric */
+        case MEMTEXT_CMD_INCR:
+        case MEMTEXT_CMD_DECR:
+            ret = write_numeric(self, env, response);
+            break;
+        /* other */
+        case MEMTEXT_CMD_VERSION:
+            break;
+        default:
+            break;
+    }
+    return ret;
+}
