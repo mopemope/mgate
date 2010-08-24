@@ -18,6 +18,8 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include <sys/un.h>
+#include <sys/stat.h>
 
 #include "picoev.h"
 #include "client.h"
@@ -27,6 +29,7 @@ typedef struct {
     char *host;
     int port;
     int listen_fd;
+    char *unix_sock_name;
     picoev_loop *main_loop;
 } ServerObject;
 

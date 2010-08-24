@@ -18,8 +18,6 @@ char *stored_response[] = {
 static void
 read_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
-//static void
-//write_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 int loop_done = 0;
 
@@ -37,7 +35,7 @@ setsig(int sig, void* handler)
 static inline void 
 sigint_cb(int signum)
 {
-    printf("Bye.\n");
+    printf("shutdown all.\n");
     loop_done = 0;
 }
 
@@ -53,19 +51,23 @@ send_writev(write_bucket *data)
     size_t w;
     int i = 0;
 #ifdef DEBUG
-    printf("writev data=%p iov=%p netx=%p\n", data, data->iov, data->next);
-    printf("WRITEV VALUE address=%p key=%s\n", data->iov[0].iov_base, data->iov[0].iov_base);
-    if(data->iov_cnt > 1){
-        printf("WRITEV key address=%p key=%s\n", data->iov[1].iov_base, data->iov[1].iov_base);
-        printf("WRITEV flag address=%p flags=%s\n", data->iov[2].iov_base, data->iov[2].iov_base);
-        if(data->cas){
-            printf("WRITEV bytes address=%p bytes=%s\n", data->iov[4].iov_base, data->iov[4].iov_base);
-            printf("WRITEV data address=%p data=%s\n", data->iov[5].iov_base, data->iov[5].iov_base);
-        }else{
-            printf("WRITEV bytes address=%p bytes=%s\n", data->iov[3].iov_base, data->iov[3].iov_base);
-            printf("WRITEV data address=%p data=%s\n", data->iov[4].iov_base, data->iov[4].iov_base);
+    if(data->binary_protocol){
+        //dump binary protocol
+    }else{
+        printf("writev data=%p iov=%p netx=%p\n", data, data->iov, data->next);
+        printf("WRITEV VALUE address=%p key=%s\n", data->iov[0].iov_base, data->iov[0].iov_base);
+        if(data->iov_cnt > 1){
+            printf("WRITEV key address=%p key=%s\n", data->iov[1].iov_base, data->iov[1].iov_base);
+            printf("WRITEV flag address=%p flags=%s\n", data->iov[2].iov_base, data->iov[2].iov_base);
+            if(data->cas){
+                printf("WRITEV bytes address=%p bytes=%s\n", data->iov[4].iov_base, data->iov[4].iov_base);
+                printf("WRITEV data address=%p data=%s\n", data->iov[5].iov_base, data->iov[5].iov_base);
+            }else{
+                printf("WRITEV bytes address=%p bytes=%s\n", data->iov[3].iov_base, data->iov[3].iov_base);
+                printf("WRITEV data address=%p data=%s\n", data->iov[4].iov_base, data->iov[4].iov_base);
+            }
+            printf("iov cnt %d \n", data->iov_cnt);
         }
-        printf("iov cnt %d \n", data->iov_cnt);
     }
 #endif
     w = writev(data->fd, data->iov, data->iov_cnt);
@@ -78,7 +80,8 @@ send_writev(write_bucket *data)
             return -1;
         }
     }if(w == 0){
-        return 1;
+        //is dead
+        return -1;
     }else{
         if(data->total > w){
             for(; i < data->iov_cnt;i++){
@@ -95,7 +98,6 @@ send_writev(write_bucket *data)
             data->total = data->total -w;
             //resume
             return 0;
-            //return send_writev(fd, iov, iov_cnt, total - w); 
         }
     }
     return 1;
@@ -169,9 +171,11 @@ write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             default:
                 //ok
                 if(data->next){
+                    //check next data
                     write_bucket *next = data->next;
                     data->next = NULL;
                     clear_write_bucket(data);
+                    //switch new data
                     client->data = next;
                 }else{
                     client->data = NULL;
@@ -179,6 +183,7 @@ write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 if(client->data == NULL){
                     //send END
+                    //all done
                     Client_clear(client);
                     picoev_del(loop, fd);
                     picoev_add(loop, fd, PICOEV_READ, TIMEOUT_SECS, read_callback, client);
@@ -423,71 +428,167 @@ Server_write(ServerObject *self, PyObject *args)
 
 }
 
-static inline PyObject * 
-Server_listen(ServerObject *self, PyObject *args)
+
+static inline int 
+inet_listen(ServerObject *server, char *server_name, int server_port)
 {
-    char *server_name;
-    int server_port;
     struct addrinfo hints, *servinfo, *p;
     int flag = 1;
     int rv;
     char strport[7];
-    int listen_fd;
+    int listen_sock; 
     
-    if(!PyArg_ParseTuple(args, "si:listen", &server_name, &server_port)){
-        //TODO
-        return NULL;
-    }
-
     memset(&hints, 0, sizeof hints);
+    
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol= IPPROTO_TCP;
-    hints.ai_flags = AI_PASSIVE; // use my IP
+    hints.ai_flags = AI_PASSIVE; 
     
     snprintf(strport, sizeof (strport), "%d", server_port);
     
     if ((rv = getaddrinfo(server_name, strport, &hints, &servinfo)) == -1) {
         PyErr_SetFromErrno(PyExc_IOError);
-        return NULL;
+        return -1;
     }
 
     // loop through all the results and bind to the first we can
     for(p = servinfo; p != NULL; p = p->ai_next) {
-        if ((listen_fd = socket(p->ai_family, p->ai_socktype,
+        if ((listen_sock = socket(p->ai_family, p->ai_socktype,
                 p->ai_protocol)) == -1) {
+            //perror("server: socket");
             continue;
         }
 
-        if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &flag,
+        if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &flag,
                 sizeof(int)) == -1) {
-            close(listen_fd);
+            close(listen_sock);
             PyErr_SetFromErrno(PyExc_IOError);
-            return NULL;
+            return -1;
         }
 
-        if (bind(listen_fd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(listen_fd);
+        if (bind(listen_sock, p->ai_addr, p->ai_addrlen) == -1) {
+            close(listen_sock);
             PyErr_SetFromErrno(PyExc_IOError);
-            return NULL;
+            return -1;
         }
 
         break;
     }
 
     if (p == NULL)  {
-        close(listen_fd);
+        close(listen_sock);
         PyErr_SetString(PyExc_IOError,"server: failed to bind\n");
+        return -1;
+    }
+
+    freeaddrinfo(servinfo); // all done with this structure
+    
+    // BACKLOG 1024
+    if (listen(listen_sock, BACKLOG) == -1) {
+        close(listen_sock);
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    server->listen_fd = listen_sock;
+    return 1;
+}
+
+static inline int
+check_unix_sockpath(char *sock_name)
+{
+    if(!access(sock_name, F_OK)){
+        if(unlink(sock_name) < 0){
+            PyErr_SetFromErrno(PyExc_IOError);
+            return -1;
+        }
+    }
+    return 1;
+}
+
+static inline int
+unix_listen(ServerObject *server, char *sock_name)
+{
+    int flag = 1;
+    struct sockaddr_un saddr;
+    int listen_sock;
+    mode_t old_umask;
+
+#ifdef DEBUG
+    printf("unix domain socket %s\n", sock_name);
+#endif
+    memset(&saddr, 0, sizeof(saddr));
+    check_unix_sockpath(sock_name);
+
+    if ((listen_sock = socket(AF_UNIX, SOCK_STREAM,0)) == -1) {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+
+    if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &flag,
+            sizeof(int)) == -1) {
+        close(listen_sock);
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+
+    saddr.sun_family = PF_UNIX;
+    strcpy(saddr.sun_path, sock_name);
+    
+    old_umask = umask(0);
+
+    if (bind(listen_sock, (struct sockaddr *)&saddr, sizeof(saddr)) == -1) {
+        close(listen_sock);
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    umask(old_umask);
+
+    // BACKLOG 1024
+    if (listen(listen_sock, BACKLOG) == -1) {
+        close(listen_sock);
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    server->listen_fd = listen_sock;
+    server->unix_sock_name = sock_name;
+    return 1;
+}
+
+
+static inline PyObject * 
+Server_listen(ServerObject *self, PyObject *args)
+{
+    char *server_name;
+    int server_port;
+    PyObject *o;
+    int ret;
+
+    if (!PyArg_ParseTuple(args, "O:listen", &o))
+        return NULL;
+
+    if(self->listen_fd > 0){
+        PyErr_SetString(PyExc_Exception, "already set listen socket");
+        return NULL;
+    }
+    
+    if(PyTuple_Check(o)){
+        //inet 
+        if(!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port))
+            return NULL;
+        ret = inet_listen(self, server_name, server_port);
+    }else if(PyString_Check(o)){
+        // unix domain 
+        ret = unix_listen(self, PyString_AS_STRING(o));
+    }else{
+        PyErr_SetString(PyExc_TypeError, "args tuple or string(path)");
+        return NULL;
+    }
+    if(ret < 0){
+        //error 
+        self->listen_fd = -1;
         return NULL;
     }
 
-    freeaddrinfo(servinfo);
-    
-    if (listen(listen_fd, BACKLOG) == -1) {
-        PyErr_SetFromErrno(PyExc_IOError);
-        return NULL;
-    }
-    self->listen_fd = listen_fd;
     Py_RETURN_NONE;
 }
 
