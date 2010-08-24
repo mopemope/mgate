@@ -326,20 +326,12 @@ error:
     return 0;
 }
 
-inline int 
-write_response(Client *self, PyObject *env, PyObject *response)
+static inline int 
+write_text_response(Client *self, PyObject *env, PyObject *response)
 {
-    int ret = -1;
-     
+    int ret;
     PyObject *pcmd = PyDict_GetItemString(env, "cmd");
-
     memtext_command cmd = (memtext_command)PyInt_AsLong(pcmd);
-    
-    if(!self->tcp_cork){
-        //cork
-        enable_cork(self->fd);
-        self->tcp_cork = 1;
-    }
     switch(cmd){
         /*retrieval*/    
         case MEMTEXT_CMD_GET:
@@ -376,6 +368,22 @@ write_response(Client *self, PyObject *env, PyObject *response)
             break;
     }
     return ret;
+}
+
+inline int 
+write_response(Client *self, PyObject *env, PyObject *response)
+{
+    
+    if(!self->tcp_cork){
+        //cork
+        enable_cork(self->fd);
+        self->tcp_cork = 1;
+    }
+    if(self->binary_protocol){
+
+    }else{
+        return write_text_response(self, env, response);
+    }
 
 }
 
