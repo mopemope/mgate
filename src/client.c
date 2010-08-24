@@ -374,7 +374,7 @@ write_response(Client *self, PyObject *env, PyObject *response)
 
 }
 
-inline void
+inline int 
 Client_exec_parse(Client *self, char *buf, size_t read_length)
 {
     client_t *client;
@@ -402,9 +402,9 @@ Client_exec_parse(Client *self, char *buf, size_t read_length)
     }
 
     if(self->binary_protocol){
-        execute_binray_parse(self, client->input_buf, client->input_len, &(client->input_pos));
+        return execute_binray_parse(self, client->input_buf, client->input_len, &(client->input_pos));
     }else{
-        execute_text_parse(self, client->input_buf, client->input_len, &(client->input_pos));
+        return execute_text_parse(self, client->input_buf, client->input_len, &(client->input_pos));
     }
 }
 

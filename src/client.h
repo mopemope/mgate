@@ -49,7 +49,7 @@ typedef struct {
 inline PyObject * 
 Client_New(PyObject *server, int fd, char *remote_addr, int remote_port);
 
-inline void 
+inline int  
 Client_exec_parse(Client *self, char *buf, size_t read_length);
 
 inline void

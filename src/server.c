@@ -300,6 +300,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         picoev_set_timeout(loop, client->fd, TIMEOUT_SECS);
         char buf[MAX_BUFSIZE];
         ssize_t r;
+        int parse_result;
         r = read(fd, buf, sizeof(buf));
         switch (r) {
             case 0: 
@@ -327,7 +328,8 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default: 
-                Client_exec_parse(client, buf, r);
+                parse_result = Client_exec_parse(client, buf, r);
+                // TODO check value
                 break;
         }
 
