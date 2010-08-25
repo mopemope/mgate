@@ -8,7 +8,7 @@ class Simple(Server):
     cas_seq = dict()
 
     def get(self, env):
-        #print env
+        print env
         k = env['key']
         #return self.cache[k]
         #print "get:" + k

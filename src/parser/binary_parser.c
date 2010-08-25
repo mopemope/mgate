@@ -144,6 +144,57 @@ error:
 static inline void 
 cb_storage(void* user, memproto_header* h, const char* key, uint16_t keylen, 
         const char* val, uint32_t vallen, uint32_t flags, uint32_t expiration){
+#ifdef DEBUG
+    printf("cb_set\n");
+#endif
+    Client *pyclient;
+    PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
+    int ret = -1;
+    
+    pyclient = (Client *)user;
+    server = pyclient->server;
+    env = PyDict_New();
+
+    //set env
+    ret = set_storage_env(env, key, keylen, val, vallen, flags, expiration);
+    
+    //TODO 
+    switch(h->opcode){
+        case MEMPROTO_CMD_SET:
+            method_name = PyString_FromString("set");
+            break;
+        case MEMPROTO_CMD_ADD:
+            method_name = PyString_FromString("add");
+            break;
+        case MEMTEXT_CMD_REPLACE:
+            method_name = PyString_FromString("replace");
+            break;
+        default:
+
+            break;
+    }
+
+    if(!method_name){
+        //error
+        goto error;
+    }
+
+    set_base_env(env, pyclient, h);
+    
+    proxy = PyDictProxy_New(env);
+    response = PyObject_CallMethodObjArgs(server, method_name, proxy, NULL);
+    Py_DECREF(method_name);
+    Py_DECREF(proxy);
+    
+    if(PyErr_Occurred()){
+        PyErr_Print();
+        loop_done = 0;
+        goto error;
+    }
+error:
+    Py_XDECREF(method_name);
+    Py_XDECREF(response);
+    
 }
 
 static inline void

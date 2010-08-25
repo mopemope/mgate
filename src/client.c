@@ -5,7 +5,7 @@
 #include "response/binary_response.h"
 
 #define BUFSIZE 8192
-
+#define MEMPROTO_MAGIC(header)             (*(( uint8_t*)&((const char*)header)[0]))
 
 inline void 
 write_error_response(Client *client, char *msg)
@@ -102,6 +102,7 @@ write_response(Client *self, PyObject *env, PyObject *response)
 }
 
 
+
 inline int 
 Client_exec_parse(Client *self, char *buf, size_t read_length)
 {
@@ -112,9 +113,15 @@ Client_exec_parse(Client *self, char *buf, size_t read_length)
 
     buf_write(client, buf, read_length);
     
+#ifdef DEBUG
+    printf("buf 0  %d\n", buf[0]);
+#endif
+
+
     if(!client->parser){
         //
-        if(buf[0] == 0x80){
+
+        if(MEMPROTO_MAGIC(buf) == 0x80){
             init_binary_parser(self);
             self->binary_protocol = 1;
 #ifdef DEBUG
