@@ -54,8 +54,9 @@ send_writev(write_bucket *data)
     if(data->binary_protocol){
         //dump binary protocol
     }else{
-        printf("writev data=%p iov=%p netx=%p\n", data, data->iov, data->next);
-        printf("WRITEV VALUE address=%p key=%s\n", data->iov[0].iov_base, data->iov[0].iov_base);
+        printf("writev data=%p iov=%p next=%p\n", data, data->iov, data->next);
+        printf("value= %s : %d\n", data->iov[0].iov_base, data->iov[0].iov_len);
+        //printf("WRITEV VALUE address=%p 0=%s\n", data->iov[0].iov_base, data->iov[0].iov_base);
         if(data->iov_cnt > 1){
             printf("WRITEV key address=%p key=%s\n", data->iov[1].iov_base, data->iov[1].iov_base);
             printf("WRITEV flag address=%p flags=%s\n", data->iov[2].iov_base, data->iov[2].iov_base);
@@ -108,15 +109,19 @@ static inline void
 clear_write_bucket(write_bucket *data)
 {
     if(data->binary_protocol){
+    
     }else{
         if(data && data->iov){
+
             if(data->iov_cnt > 6){
                 PyMem_Free(data->iov[2].iov_base);
                 PyMem_Free(data->iov[3].iov_base);
             }
+            
             if(data->cas){
                 PyMem_Free(data->iov[4].iov_base);
             }
+            
             Py_XDECREF(data->env);
             PyMem_Free(data->iov);
             data->iov = NULL;
@@ -140,7 +145,7 @@ write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     write_bucket *data = client->data;
 
 #ifdef DEBUG
-    printf("write callback %d\n", fd);
+    printf("write callback fd:%d\n", fd);
 #endif
     
     if ((events & PICOEV_TIMEOUT) != 0) {
@@ -206,6 +211,7 @@ request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt,
 #ifdef DEBUG
     printf("client fd = %d key_num %d\n", client->fd, client->key_num);
 #endif
+
     server = (ServerObject *)client->server;
     new_bucket = PyMem_Malloc(sizeof(write_bucket));
     memset(new_bucket, 0, sizeof(write_bucket));

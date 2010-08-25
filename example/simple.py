@@ -23,7 +23,7 @@ class Simple(Server):
         #return v
 
     def set(self, env):
-        #print env
+        print env
         k = env['key']
         v = env['data']
         flags = env["flags"]

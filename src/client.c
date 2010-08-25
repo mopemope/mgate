@@ -124,7 +124,7 @@ Client_exec_parse(Client *self, char *buf, size_t read_length)
             init_text_parser(self);
             self->binary_protocol = 0;
 #ifdef DEBUG
-            printf("use text protocol");
+            printf("use text protocol \n");
 #endif
         }
     }

@@ -39,6 +39,11 @@ text_simple_response(Client *client, PyObject *env, char *data, size_t data_len)
     iov[0].iov_len = data_len;
     total += iov[0].iov_len;
 
+#ifdef DEBUG
+    printf("text_simple_response response:%s\n", data);
+    printf("text_simple_response iov:%p\n", iov);
+#endif
+
     request_send_data(client, env, iov, 1, total, false);
 
     return 1;
@@ -242,25 +247,27 @@ error:
 static inline int 
 write_storage(Client *client, PyObject *env, PyObject *response)
 {
-    PyObject *str_response = NULL;
     char *data;
     Py_ssize_t data_len;
     int ret;
 
 #ifdef DEBUG
-    printf("call write_storage");
+    printf("call write_storage \n");
 #endif
 
     if(PyBool_Check(response)){
         //BOOL
         if(PyObject_IsTrue(response)){
-            str_response = PyString_FromString(STORED);
+            ret = text_simple_response(client, env, STORED, 8);
         }else{
-            str_response = PyString_FromString(NOT_STORED); 
+            ret = text_simple_response(client, env, NOT_STORED, 12);
         }
     }else if(PyString_Check(response)){
-        str_response = response;
-        //Py_INCREF(str_response);
+        if(PyString_AsStringAndSize(response, &data, &data_len)){
+            //TODO raise Error
+            goto error;
+        }
+        ret = text_simple_response(client, env, data, data_len);
     }else{
         //TODO error
 
@@ -268,21 +275,17 @@ write_storage(Client *client, PyObject *env, PyObject *response)
     }
 
     
-    if(PyString_AsStringAndSize(str_response, &data, &data_len)){
-        //TODO raise Error
-        goto error;
-    }
-    ret = text_simple_response(client, env, data, data_len);
     if(ret < 0){
         //write_error
         //raise Error
         goto error;
     }
-    Py_XDECREF(str_response);
     //Py_DECREF(response);
     return ret;
 error:
-    Py_XDECREF(str_response);
+#ifdef DEBUG
+    printf("error \n");
+#endif 
     //Py_DECREF(response);
     return 0;
 
