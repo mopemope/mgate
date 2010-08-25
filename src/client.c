@@ -2,6 +2,7 @@
 #include "parser/text_parser.h"
 #include "parser/binary_parser.h"
 #include "response/text_response.h"
+#include "response/binary_response.h"
 
 #define BUFSIZE 8192
 
@@ -10,6 +11,7 @@ inline void
 write_error_response(Client *client, char *msg)
 {
     if(client->binary_protocol){
+        binary_error_response(client, msg);
     }else{
         text_error_response(client, msg);
     }
@@ -92,7 +94,7 @@ write_response(Client *self, PyObject *env, PyObject *response)
         self->tcp_cork = 1;
     }
     if(self->binary_protocol){
-
+        return write_binary_response(self, env, response);
     }else{
         return write_text_response(self, env, response);
     }
