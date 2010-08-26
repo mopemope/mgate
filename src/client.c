@@ -89,10 +89,11 @@ write_response(Client *self, PyObject *env, PyObject *response)
 {
     
     if(!self->tcp_cork){
-        //cork
+        //set TCP_CORK
         enable_cork(self->fd);
         self->tcp_cork = 1;
     }
+
     if(self->binary_protocol){
         return write_binary_response(self, env, response);
     }else{

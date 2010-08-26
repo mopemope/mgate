@@ -225,6 +225,7 @@ init_binary_parser(Client *pyclient)
     callback->cb_get = cb_get; 
     callback->cb_getk = cb_get;
     callback->cb_getq = cb_get;
+    callback->cb_getkq = cb_get;
     callback->cb_set = cb_storage;
     callback->cb_add = cb_storage;
     callback->cb_replace = cb_storage;

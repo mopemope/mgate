@@ -407,6 +407,7 @@ Server_memclient(ServerObject *self, PyObject *args)
 static inline PyObject * 
 Server_write(ServerObject *self, PyObject *args)
 {
+    int ret;
     PyObject *client;
     PyObject *pe;
 
@@ -427,7 +428,15 @@ Server_write(ServerObject *self, PyObject *args)
         return NULL;
     }
     client = PyDict_GetItemString(env, "_client");
-    write_response((Client *)client, env, response);
+    
+    ret = write_response((Client *)client, env, response);
+    
+    if(ret < 0){
+        //TODO error
+        return NULL;
+    
+    }
+    //mark
     PyDict_SetItemString(env, "done", Py_True);
 
     Py_RETURN_NONE;
