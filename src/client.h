@@ -44,6 +44,7 @@ typedef struct {
     bool cas;
     PyObject *env;
     uint8_t binary_protocol;
+    memproto_header *header;
 } write_bucket;
 
 
