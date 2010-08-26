@@ -33,6 +33,7 @@ typedef struct {
     void *data;
     uint8_t binary_protocol;
     uint8_t tcp_cork;
+    memproto_header *header;
 } Client;
 
 typedef struct {
@@ -44,7 +45,6 @@ typedef struct {
     bool cas;
     PyObject *env;
     uint8_t binary_protocol;
-    memproto_header *header;
 } write_bucket;
 
 

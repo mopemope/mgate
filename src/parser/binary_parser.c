@@ -12,6 +12,10 @@ set_base_env(PyObject *env, Client *pyclient, memproto_header *h)
     key = PyString_FromString("_client");
     PyDict_SetItem(env, key, (PyObject *)pyclient);
     Py_DECREF(key);
+
+    //keep header
+    pyclient->header = h;
+
     return 1;
 }
 
