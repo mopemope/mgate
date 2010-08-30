@@ -3,6 +3,7 @@
 #include "parser/binary_parser.h"
 #include "response/text_response.h"
 #include "response/binary_response.h"
+#include "util.h"
 
 #define BUFSIZE 8192
 #define MEMPROTO_MAGIC(header)             (*(( uint8_t*)&((const char*)header)[0]))
@@ -51,7 +52,6 @@ static inline void
 client_t_new(Client *pyclient, int fd, char *remote_addr, int remote_port)
 {
     client_t *client;
-    ServerObject *server;
     client = PyMem_Malloc(sizeof(client_t)); 
     memset(client, 0, sizeof(client_t));
     client->fd = fd;
