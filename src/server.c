@@ -200,7 +200,37 @@ write_req_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 
 }
 
+inline void
+send_bucket(Client *client, write_bucket *bucket)
+{
+    uint8_t add;
+    write_bucket *current;
+    ServerObject *server;
+    picoev_loop *loop;
+    server = (ServerObject *)client->server;
+    loop = server->main_loop;
 
+    if(client->data == NULL){
+        client->data = bucket;
+        add = 1;
+    }else{
+        current = client->data;
+        while(1){
+            if(current->next){
+                current = current->next;
+            }else{
+                current->next = bucket;
+                break;
+            }
+        }
+    }
+
+    if(add){
+        picoev_add(loop, client->fd, PICOEV_WRITE, TIMEOUT_SECS, write_req_callback, client);
+    }
+}
+
+/*
 inline void
 request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas)
 {    
@@ -243,7 +273,7 @@ request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt,
         picoev_add(loop, client->fd, PICOEV_WRITE, TIMEOUT_SECS, write_req_callback, client);
     }
 }
-
+*/
 
 /*
 static void

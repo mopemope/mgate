@@ -46,8 +46,11 @@ typedef struct {
 //void
 //Sever_add_wevent(Client *client, picoev_handler* callback, void* cb_arg);
 
+//inline void
+//request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas);
+
 inline void
-request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas);
+send_bucket(Client *client, write_bucket *bucket);
 
 int loop_done;
 

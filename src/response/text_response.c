@@ -1,8 +1,30 @@
 #include "../server.h"
 #include "text_response.h"
 
+
 static inline int 
 write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned short flags, uint64_t cas_unique);
+
+static inline void
+request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas)
+{
+    write_bucket *new_bucket;
+
+    new_bucket = PyMem_Malloc(sizeof(write_bucket));
+    memset(new_bucket, 0, sizeof(write_bucket));
+    new_bucket->env = env;
+    new_bucket->next = NULL;
+    new_bucket->fd = client->fd;
+    new_bucket->iov = iov;
+    new_bucket->iov_cnt = iov_cnt;
+    new_bucket->total = total;
+    new_bucket->cas = cas;
+    new_bucket->binary_protocol = client->binary_protocol;
+
+    return send_bucket(client, new_bucket);
+
+}
+
 
 inline void
 text_error_response(Client *client, char *error)
