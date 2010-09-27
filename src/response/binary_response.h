@@ -5,6 +5,16 @@
 #include "../client.h"
 
 
+struct {
+    uint8_t magic;
+    uint8_t opcode;
+    uint8_t data_type;
+    uint16_t reserved;
+    uint32_t opaque;
+    uint64_t cas;
+} header;
+
+
 inline void 
 binary_error_response(Client *client, char *msg);
 
