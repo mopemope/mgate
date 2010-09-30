@@ -1,4 +1,6 @@
+#include "parser.h"
 #include "../server.h"
+
 
 static inline int
 set_get_env_internal(PyObject *env, char *c_key, size_t c_key_len);
@@ -624,4 +626,7 @@ execute_text_parse(Client *pyclient, const char* data, size_t len, size_t* off)
     memtext_execute(parser, data, len, off);
     return 0;
 }
+
+
+
 

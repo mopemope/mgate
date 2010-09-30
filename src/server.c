@@ -19,9 +19,7 @@ char *stored_response[] = {
 static void
 read_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
-
 int loop_done = 0;
-
 
 static inline int
 setsig(int sig, void* handler)
@@ -36,13 +34,20 @@ setsig(int sig, void* handler)
 static inline void 
 sigint_cb(int signum)
 {
-    printf("shutdown all.\n");
+    //printf("shutdown all.\n");
     loop_done = 0;
+}
+
+static inline void 
+sighup_cb(int signum)
+{
+
 }
 
 static inline void 
 sigpipe_cb(int signum)
 {
+
 }
 
 
@@ -502,6 +507,7 @@ Server_run(ServerObject *self){
     loop_done = 1;
     setsig(SIGPIPE, sigpipe_cb);
     setsig(SIGINT, sigint_cb);
+    setsig(SIGHUP, sighup_cb);
     
     self->main_loop = main_loop;
     
