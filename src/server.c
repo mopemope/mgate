@@ -1,6 +1,7 @@
 #include "server.h"
 #include "structmember.h"
 #include "util.h"
+#include "response/response.h"
 
 #define MAX_FDS 1024 * 8
 #define TIMEOUT_SECS 1
@@ -44,66 +45,6 @@ sigpipe_cb(int signum)
 {
 }
 
-
-static inline int
-send_writev(write_bucket *data)
-{
-    size_t w;
-    int i = 0;
-#ifdef DEBUG
-    if(data->binary_protocol){
-        //dump binary protocol
-    }else{
-        printf("writev data=%p iov=%p next=%p\n", data, data->iov, data->next);
-        printf("value= %s : %d\n", data->iov[0].iov_base, data->iov[0].iov_len);
-        //printf("WRITEV VALUE address=%p 0=%s\n", data->iov[0].iov_base, data->iov[0].iov_base);
-        if(data->iov_cnt > 1){
-            printf("WRITEV key address=%p key=%s\n", data->iov[1].iov_base, data->iov[1].iov_base);
-            printf("WRITEV flag address=%p flags=%s\n", data->iov[2].iov_base, data->iov[2].iov_base);
-            if(data->cas){
-                printf("WRITEV bytes address=%p bytes=%s\n", data->iov[4].iov_base, data->iov[4].iov_base);
-                printf("WRITEV data address=%p data=%s\n", data->iov[5].iov_base, data->iov[5].iov_base);
-            }else{
-                printf("WRITEV bytes address=%p bytes=%s\n", data->iov[3].iov_base, data->iov[3].iov_base);
-                printf("WRITEV data address=%p data=%s\n", data->iov[4].iov_base, data->iov[4].iov_base);
-            }
-            printf("iov cnt %d \n", data->iov_cnt);
-        }
-    }
-#endif
-    w = writev(data->fd, data->iov, data->iov_cnt);
-    if(w == -1){
-        //error
-        if (errno == EAGAIN || errno == EWOULDBLOCK) { 
-            /* try again later */
-            return 0;
-        }else{
-            return -1;
-        }
-    }if(w == 0){
-        //is dead
-        return -1;
-    }else{
-        if(data->total > w){
-            for(; i < data->iov_cnt;i++){
-                if(w > data->iov[i].iov_len){
-                    //already write
-                    w -= data->iov[i].iov_len;
-                    data->iov[i].iov_len = 0;
-                }else{
-                    data->iov[i].iov_base += w;
-                    data->iov[i].iov_len = data->iov[i].iov_len - w;
-                    break;
-                }
-            }
-            data->total = data->total -w;
-            //resume
-            return 0;
-        }
-    }
-    return 1;
-
-}
 
 static inline void
 clear_write_bucket(write_bucket *data)
@@ -230,94 +171,6 @@ send_bucket(Client *client, write_bucket *bucket)
     }
 }
 
-/*
-inline void
-request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas)
-{    
-    picoev_loop *loop;
-    write_bucket *new_bucket, *current;
-    ServerObject *server;
-    
-#ifdef DEBUG
-    printf("client fd = %d key_num %d\n", client->fd, client->key_num);
-#endif
-
-    server = (ServerObject *)client->server;
-    new_bucket = PyMem_Malloc(sizeof(write_bucket));
-    memset(new_bucket, 0, sizeof(write_bucket));
-    new_bucket->env = env;
-    new_bucket->next = NULL;
-    new_bucket->fd = client->fd;
-    new_bucket->iov = iov;
-    new_bucket->iov_cnt = iov_cnt;
-    new_bucket->total = total;
-    new_bucket->cas = cas;
-    new_bucket->binary_protocol = client->binary_protocol;
-    loop = server->main_loop;
-    bool add =0;
-    if(client->data == NULL){
-        client->data = new_bucket;
-        add = 1;
-    }else{
-        current = client->data;
-        while(1){
-            if(current->next){
-                current = current->next;
-            }else{
-                current->next = new_bucket;
-                break;
-            }
-        }
-    }
-    if(add){
-        picoev_add(loop, client->fd, PICOEV_WRITE, TIMEOUT_SECS, write_req_callback, client);
-    }
-}
-*/
-
-/*
-static void
-timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
-{
-    Client *client = (Client *)(cb_arg);
-    if ((events & PICOEV_TIMEOUT) != 0) {
-        //printf("timeout!\n");
-        //write_error_response(client, "timeout"); 
-        picoev_del(loop, client->fd);
-        //send ERROR
-        Client_close(client);
-    }
-
-}
-*/
-
-/*
-static void
-write_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
-{
-    Client *client = (Client *)(cb_arg);
-    if ((events & PICOEV_TIMEOUT) != 0) {
-
-        //timeout
-        //printf("read timeout! \n");
-        write_error_response(client, "timeout"); 
-        picoev_del(loop, client->fd);
-        Client_close(client);
-    
-    } else if ((events & PICOEV_WRITE) != 0) {
-        switch(client->status){
-            case SENDED:
-                picoev_set_timeout(loop, client->fd, 1);
-                Client_clear(client);                
-                break;
-            default:
-                picoev_del(loop, client->fd);
-                Client_close(client);
-                break;
-        }
-    }
-
-}*/
 
 
 static inline void
@@ -400,9 +253,9 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             remote_port = ntohs(client_addr.sin_port);
             client = (Client *)Client_New((PyObject *)server, client_fd, remote_addr, remote_port);
             if(!client){
-                //TODO ERROR
+                //TODO Error
+                return ;
             }
-            //client->server = (PyObject *)server;
             picoev_add(loop, client_fd, PICOEV_READ, TIMEOUT_SECS, read_callback, client);
         }else{
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -462,11 +315,11 @@ Server_write(ServerObject *self, PyObject *args)
     ret = write_response((Client *)client, env, response);
     
     if(ret < 0){
-        //TODO error
+        //already set PyErr
         return NULL;
-    
     }
-    //mark
+
+    //mark sended
     PyDict_SetItemString(env, "done", Py_True);
 
     Py_RETURN_NONE;
