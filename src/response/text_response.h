@@ -3,6 +3,7 @@
 
 #include <Python.h>
 #include "../client.h"
+#include "response.h"
 
 
 inline void 

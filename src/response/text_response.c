@@ -5,6 +5,7 @@
 static inline int 
 write_retrieval(Client *client, PyObject *env, PyObject *response, unsigned short flags, uint64_t cas_unique);
 
+/*
 static inline void
 request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt, size_t total, bool cas)
 {
@@ -23,7 +24,7 @@ request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt,
 
     return send_bucket(client, new_bucket);
 
-}
+}*/
 
 
 inline void
