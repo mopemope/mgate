@@ -1,22 +1,52 @@
 #include "../server.h"
-
+#include "common.h"
 
 static inline int
 set_get_env_internal(PyObject *env, char *c_key, size_t c_key_len);
 
 static inline void
-set_base_env(PyObject *env, Client *pyclient, memtext_command cmd)
+set_base_env(PyObject *env, PyObject *method_name, Client *pyclient, memtext_command cmd)
 {
-    PyObject *key = PyString_FromString("cmd");
     PyObject *object = Py_BuildValue("l", cmd);
-    PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
+    
+    PyDict_SetItem(env, cmd_key, method_name);
+    PyDict_SetItem(env, cmdi_key, object);
     Py_DECREF(object);
 
-    key = PyString_FromString("_client");
-    PyDict_SetItem(env, key, (PyObject *)pyclient);
-    Py_DECREF(key);
+    PyDict_SetItem(env, client_key, (PyObject *)pyclient);
 
+}
+
+static inline int 
+process_app(Client *pyclient, PyObject *env)
+{
+    PyObject *response=NULL;
+    int ret = -1;
+
+    response = call_app(env);
+    
+    if(PyErr_Occurred()){
+        //TODO error
+        PyErr_Print();
+        //exit(-1);
+        loop_done = 0;
+        goto error;
+    }
+    
+    ret = write_response((Client *)pyclient, env, response);
+    
+    if(PyErr_Occurred()){
+        //TODO error
+        PyErr_Print();
+        //exit(-1);
+        loop_done = 0;
+        goto error;
+    }
+    Py_XDECREF(response);
+    return ret;
+error:
+    Py_XDECREF(response);
+    return -1;
 }
 
 static inline int
@@ -30,24 +60,20 @@ set_numeric_env(PyObject *env, memtext_request_numeric *req)
     bool c_noreply = req->noreply;
 
 
-    PyObject *key = PyString_FromString("key");
+    PyObject *key = key_key;
     PyObject *object = PyString_FromStringAndSize(c_key, c_key_len);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("value");
+    key = value_key;
     object = Py_BuildValue("I", c_value);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("noreply");
+    key = noreply_key;
     object = PyBool_FromLong(c_noreply);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
-
 
     return ret;
 }
@@ -62,22 +88,19 @@ set_delete_env(PyObject *env, memtext_request_delete *req)
 	uint32_t c_exptime = req->exptime;
     bool c_noreply = req->noreply;
 
-    PyObject *key = PyString_FromString("key");
+    PyObject *key = key_key;
     PyObject *object = PyString_FromStringAndSize(c_key, c_key_len);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("exptime");
+    key = exptime_key;
     object = Py_BuildValue("I", c_exptime);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("noreply");
+    key = noreply_key;
     object = PyBool_FromLong(c_noreply);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
     return ret;
@@ -98,10 +121,9 @@ static inline int
 set_get_env_internal(PyObject *env, char *c_key, size_t c_key_len)
 {
     int ret = 0;
-    PyObject *key = PyString_FromString("key");
+    PyObject *key = key_key;
     PyObject *object = PyString_FromStringAndSize(c_key, c_key_len);
     ret = PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
     return ret;
 }
@@ -121,34 +143,29 @@ set_storage_env(PyObject *env, memtext_request_storage *req)
 	uint32_t c_exptime = req->exptime;
     bool c_noreply = req->noreply;
 
-    PyObject *key = PyString_FromString("key");
+    PyObject *key = key_key;
     PyObject *object = PyString_FromStringAndSize(c_key, c_key_len);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("data");
+    key = data_key;
     object = PyString_FromStringAndSize(c_data, c_data_len);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("exptime");
+    key = exptime_key;
     object = Py_BuildValue("I", c_exptime);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("flags");
+    key = flags_key;
     object = Py_BuildValue("H", c_flags);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("noreply");
+    key = noreply_key;;
     object = PyBool_FromLong(c_noreply);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
     return ret;
     
@@ -171,40 +188,34 @@ set_cas_env(PyObject *env, memtext_request_cas *req)
     uint64_t c_cas_unique = req->cas_unique;
 
 
-    PyObject *key = PyString_FromString("key");
+    PyObject *key = key_key;
     PyObject *object = PyString_FromStringAndSize(c_key, c_key_len);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("data");
+    key = data_key;
     object = PyString_FromStringAndSize(c_data, c_data_len);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("exptime");
+    key = exptime_key;
     object = Py_BuildValue("I", c_exptime);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("flags");
+    key = flags_key;
     object = Py_BuildValue("H", c_flags);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("noreply");
+    key = noreply_key;
     object = PyBool_FromLong(c_noreply);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
 
-    key = PyString_FromString("cas_unique");
+    key = cas_key;
     object = Py_BuildValue("k", c_cas_unique);
     PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
     Py_DECREF(object);
     
     return ret;
@@ -214,10 +225,7 @@ set_cas_env(PyObject *env, memtext_request_cas *req)
 static inline int
 storage(Client *pyclient, memtext_command cmd, memtext_request_storage *req)
 {
-    PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
-    int ret = -1;
-    
-    server = pyclient->server;
+    PyObject *env;
     
     env = PyDict_New();
     //set env
@@ -225,193 +233,73 @@ storage(Client *pyclient, memtext_command cmd, memtext_request_storage *req)
     
     switch(cmd){
         case MEMTEXT_CMD_SET:
-            method_name = PyString_FromString("set");
+            set_base_env(env, m_set, pyclient, cmd);
             break;
         case MEMTEXT_CMD_ADD:
-            method_name = PyString_FromString("add");
+            set_base_env(env, m_add, pyclient, cmd);
             break;
         case MEMTEXT_CMD_REPLACE:
-            method_name = PyString_FromString("replace");
+            set_base_env(env, m_replace, pyclient, cmd);
             break;
         case MEMTEXT_CMD_APPEND:
-            method_name = PyString_FromString("append");
+            set_base_env(env, m_append, pyclient, cmd);
             break;
         case MEMTEXT_CMD_PREPEND:
-            method_name = PyString_FromString("prepend");
+            set_base_env(env, m_prepend, pyclient, cmd);
             break;
         default:
             break;
     }
-    if(method_name){
-        set_base_env(env, pyclient, cmd);
-        proxy = PyDictProxy_New(env);
-        response = PyObject_CallMethodObjArgs(server, method_name, proxy, NULL);
-        //response = PyObject_CallMethodObjArgs(server, method_name, pyclient, proxy, NULL);
-        Py_XDECREF(method_name);
-        Py_DECREF(proxy);
-    }else{
-        goto error;
-    }
-
-    if(PyErr_Occurred()){
-        //TODO error
-        PyErr_Print();
-        //exit(-1);
-        loop_done = 0;
-        goto error;
-    }
-    /*
-    if(response == Py_None){
-        //lazy
-        pyclient->status = CALLED;
-        ret = 0;
-    }else{
-        ret = write_response(pyclient, env, response);
-    }*/
-    return ret;
-error:
-    Py_XDECREF(response);
-    return -1;
-
+    return process_app(pyclient, env);
 }
 
 static inline int
 cas(Client *pyclient, memtext_command cmd, memtext_request_cas *req)
 {
-    PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
-    int ret = -1;
-    
-    server = pyclient->server;
+    PyObject *env;
     
     env = PyDict_New();
     //set env
     set_cas_env(env, req);
-    
-    method_name = PyString_FromString("cas");
-    set_base_env(env, pyclient, cmd); 
-    proxy = PyDictProxy_New(env);
-    response = PyObject_CallMethodObjArgs(server, method_name, proxy, NULL);
-    //response = PyObject_CallMethodObjArgs(server, method_name, pyclient, proxy, NULL);
-    Py_XDECREF(method_name);
-    Py_DECREF(proxy);
-
-    if(PyErr_Occurred()){
-        PyErr_Print();
-        //exit(-1);
-        loop_done = 0;
-        goto error;
-    }
-    /*
-    if(response == Py_None){
-        //lazy
-        pyclient->status = CALLED;
-        ret = 0;
-    }else{
-        ret = write_response(pyclient, env, response);
-    }*/
-    return ret;
-error:
-    Py_XDECREF(response);
-    return -1;
-
+    set_base_env(env, m_cas, pyclient, cmd); 
+    return process_app(pyclient, env);
 }
 
 static inline int
 delete(Client *pyclient, memtext_command cmd, memtext_request_delete *req)
 {
-    PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
-    int ret = -1;
+    PyObject *env;
     
-    server = pyclient->server;
     
     env = PyDict_New();
     //set env
     set_delete_env(env, req);
+    set_base_env(env, m_delete, pyclient, cmd);
+    return process_app(pyclient, env);
     
-    method_name = PyString_FromString("delete");
-    set_base_env(env, pyclient, cmd);
-    
-    proxy = PyDictProxy_New(env);
-    response = PyObject_CallMethodObjArgs(server, method_name, proxy, NULL);
-    //response = PyObject_CallMethodObjArgs(server, method_name, pyclient, proxy, NULL);
-    Py_DECREF(method_name);
-    Py_DECREF(proxy);
-
-    if(PyErr_Occurred()){
-        //TODO error
-        PyErr_Print();
-        //exit(-1);
-        loop_done = 0;
-        goto error;
-    }
-    /*
-    if(response == Py_None){
-        //lazy
-        pyclient->status = CALLED;
-        ret = 0;
-    }else{
-        ret = write_response(pyclient, env, response);
-    }*/
-    return ret;
-error:
-    Py_XDECREF(response);
-    return -1;
-
 }
 
 static inline int 
-get(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req, char *call_method)
+get(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req)
 {
-    PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
-    int ret = -1;
+    PyObject *env;
     
-    server = pyclient->server;
     env = PyDict_New();
 
     //set env
     set_get_env(env, req);
-
-    method_name = PyString_FromString(call_method);
-    set_base_env(env, pyclient, cmd);
-    
-    proxy = PyDictProxy_New(env);
-    response = PyObject_CallMethodObjArgs(server, method_name, proxy, NULL);
-    //response = PyObject_CallMethodObjArgs(server, method_name, pyclient, proxy, NULL);
-    Py_DECREF(method_name);
-    Py_DECREF(proxy);
-    
-    if(PyErr_Occurred()){
-        //TODO error
-        PyErr_Print();
-        //exit(-1);
-        loop_done = 0;
-        goto error;
-    }
-    /* 
-    if(response == Py_None){
-        //lazy
-        pyclient->status = CALLED;
-        ret = 0;
-    }else{
-        ret = write_response(pyclient, env, response);
-    }*/
-    return ret;
-error:
-    Py_XDECREF(response);
-    return -1;
-
+    set_base_env(env, m_get, pyclient, cmd);
+    return process_app(pyclient, env);
 }
 
 static inline int 
-get_multi(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req, char *call_method)
+get_multi(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req)
 {
-    PyObject *server, *env, *proxy, *response=NULL, *method_name=NULL;
+    PyObject *env;
     int ret = -1;
     unsigned i; 
     char *c_key;
     size_t c_key_len;
-
-    server = pyclient->server;
     
 	for(i = 0; i < req->key_num; i++) {
 #ifdef DEBUG
@@ -422,34 +310,8 @@ get_multi(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req,
 	    c_key_len  = req->key_len[i];
         set_get_env_internal(env, c_key, c_key_len);
         
-        method_name = PyString_FromString(call_method);
-        set_base_env(env, pyclient, cmd);
-
-        proxy = PyDictProxy_New(env);
-        response = PyObject_CallMethodObjArgs(server, method_name, proxy, NULL);
-        //response = PyObject_CallMethodObjArgs(server, method_name, pyclient, proxy, NULL);
-        Py_DECREF(method_name);
-        Py_DECREF(proxy);
-
-        if(PyErr_Occurred()){
-            //TODO error
-            PyErr_Print();
-            //exit(-1);
-            loop_done = 0;
-            goto error;
-        }
-
-        /*
-        if(response == Py_None){
-            //lazy
-            pyclient->status = CALLED;
-            ret = 0;
-        }else{
-            //direct write response
-            ret = write_response(pyclient, env, response);
-        }
-        */
-        Py_XDECREF(response);
+        set_base_env(env, m_get, pyclient, cmd);
+        process_app(pyclient, env);
     }
     
     return ret;
@@ -463,11 +325,7 @@ error:
 static inline int
 numeric(Client *pyclient, memtext_command cmd, memtext_request_numeric *req)
 {
-    PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
-    int ret = -1;
-    
-    //save cmd type
-    server = pyclient->server;
+    PyObject *env;
 
     env = PyDict_New();
     //set env
@@ -475,41 +333,16 @@ numeric(Client *pyclient, memtext_command cmd, memtext_request_numeric *req)
 
     switch(cmd){
         case MEMTEXT_CMD_INCR:
-            method_name = PyString_FromString("incr");
+            set_base_env(env, m_incr, pyclient, cmd);
             break;
         case MEMTEXT_CMD_DECR:
-            method_name = PyString_FromString("decr");
+            set_base_env(env, m_decr, pyclient, cmd);
             break;
         default:
             break;
     }
-    set_base_env(env, pyclient, cmd);
+    return process_app(pyclient, env);
 
-    proxy = PyDictProxy_New(env);
-    response = PyObject_CallMethodObjArgs(server, method_name, pyclient, proxy, NULL);
-    //response = PyObject_CallMethodObjArgs(server, method_name, pyclient, proxy, NULL);
-    Py_DECREF(method_name);
-    Py_DECREF(proxy);
-    
-    if(PyErr_Occurred()){
-        //TODO error
-        PyErr_Print();
-        //exit(-1);
-        loop_done = 0;
-        goto error;
-    }
-    /*
-    if(response == Py_None){
-        //lazy
-        pyclient->status = CALLED;
-        ret = 0;
-    }else{
-        ret = write_response(pyclient, env, response);
-    }*/
-    return ret;
-error:
-    Py_XDECREF(response);
-    return -1;
 
 }
 
@@ -518,7 +351,6 @@ static inline int
 retrieval_callback(void* user, memtext_command cmd, memtext_request_retrieval* req)
 {
     int ret = 0;
-    char *call_method;
 
     Client *client = (Client *)user;
     client->key_num = req->key_num;
@@ -526,16 +358,11 @@ retrieval_callback(void* user, memtext_command cmd, memtext_request_retrieval* r
     printf("call get or gets %d key_num %d\n", client->fd, client->key_num);
 #endif
     
-    if(cmd == MEMTEXT_CMD_GET){
-        call_method = "get";
-    }else{
-        call_method = "gets";
-    }
 
 	if(req->key_num == 1) {
-		ret = get(client, cmd, req, call_method);
+		ret = get(client, cmd, req);
 	} else {
-		ret = get_multi(client, cmd, req, call_method);
+		ret = get_multi(client, cmd, req);
 	}
     return ret;
 }

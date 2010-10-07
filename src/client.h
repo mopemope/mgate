@@ -27,7 +27,6 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     client_t *client;
-    PyObject *server;
     int fd;
     int key_num;
     void *data;
@@ -49,7 +48,7 @@ typedef struct {
 
 
 inline PyObject * 
-Client_New(PyObject *server, int fd, char *remote_addr, int remote_port);
+Client_New(int fd, char *remote_addr, int remote_port);
 
 inline int  
 Client_exec_parse(Client *self, char *buf, size_t read_length);

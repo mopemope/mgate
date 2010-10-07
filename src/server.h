@@ -24,15 +24,6 @@
 #include "picoev.h"
 #include "client.h"
 
-typedef struct {
-    PyObject_HEAD
-    char *host;
-    int port;
-    int listen_fd;
-    char *unix_sock_name;
-    picoev_loop *main_loop;
-} ServerObject;
-
 
 #define STORED "STORED\r\n"
 #define NOT_STORED "NOT_STORED\r\n"
@@ -52,7 +43,9 @@ typedef struct {
 inline void
 send_bucket(Client *client, write_bucket *bucket);
 
-int loop_done;
+extern picoev_loop* main_loop;
+extern int loop_done;
+extern PyObject *mgate_app;
 
 #endif
 

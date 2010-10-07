@@ -1,6 +1,7 @@
 #include "server.h"
 #include "structmember.h"
 #include "util.h"
+#include "parser/common.h"
 #include "response/response.h"
 
 #define MAX_FDS 1024 * 8
@@ -15,6 +16,23 @@ char *stored_response[] = {
     EXISTS,
     NOT_FOUND
 };
+
+static char *server_name = "127.0.0.1";
+static short server_port = 8000;
+static int listen_sock;  // listen socket
+
+picoev_loop* main_loop; //main loop
+
+PyObject *mgate_app = NULL; //mgte app
+static PyObject *watchdog = NULL; //watchdog
+static char *log_path = NULL; //access log path
+static int log_fd = -1; //access log
+static char *error_log_path = NULL; //error log path
+static int err_log_fd = -1; //error log
+
+int max_content_length = 1024 * 1024 * 16; //max_content_length
+
+static char *unix_sock_name = NULL;
 
 static void
 read_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
@@ -151,10 +169,6 @@ send_bucket(Client *client, write_bucket *bucket)
 {
     uint8_t add;
     write_bucket *current;
-    ServerObject *server;
-    picoev_loop *loop;
-    server = (ServerObject *)client->server;
-    loop = server->main_loop;
 
     if(client->data == NULL){
         client->data = bucket;
@@ -172,7 +186,7 @@ send_bucket(Client *client, write_bucket *bucket)
     }
 
     if(add){
-        picoev_add(loop, client->fd, PICOEV_WRITE, TIMEOUT_SECS, write_req_callback, client);
+        picoev_add(main_loop, client->fd, PICOEV_WRITE, TIMEOUT_SECS, write_req_callback, client);
     }
 }
 
@@ -243,11 +257,9 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     struct sockaddr_in client_addr;
     char *remote_addr;
     int remote_port;
-    ServerObject *server;
     Client *client;
     
     if ((events & PICOEV_READ) != 0) {
-        server = (ServerObject *)cb_arg;
 
         socklen_t client_len = sizeof(client_addr);
         client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
@@ -256,7 +268,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             setup_sock(client_fd);
             remote_addr = inet_ntoa (client_addr.sin_addr);
             remote_port = ntohs(client_addr.sin_port);
-            client = (Client *)Client_New((PyObject *)server, client_fd, remote_addr, remote_port);
+            client = (Client *)Client_New(client_fd, remote_addr, remote_port);
             if(!client){
                 //TODO Error
                 return ;
@@ -293,7 +305,7 @@ Server_memclient(ServerObject *self, PyObject *args)
 }*/
 
 static inline PyObject * 
-Server_write(ServerObject *self, PyObject *args)
+mgate_write(PyObject *self, PyObject *args)
 {
     int ret;
     PyObject *client;
@@ -333,13 +345,13 @@ Server_write(ServerObject *self, PyObject *args)
 
 
 static inline int 
-inet_listen(ServerObject *server, char *server_name, int server_port)
+inet_listen(char *server_name, int server_port)
 {
     struct addrinfo hints, *servinfo, *p;
     int flag = 1;
     int rv;
     char strport[7];
-    int listen_sock; 
+    int listen_fd; 
     
     memset(&hints, 0, sizeof hints);
     
@@ -356,21 +368,21 @@ inet_listen(ServerObject *server, char *server_name, int server_port)
 
     // loop through all the results and bind to the first we can
     for(p = servinfo; p != NULL; p = p->ai_next) {
-        if ((listen_sock = socket(p->ai_family, p->ai_socktype,
+        if ((listen_fd = socket(p->ai_family, p->ai_socktype,
                 p->ai_protocol)) == -1) {
             //perror("server: socket");
             continue;
         }
 
-        if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &flag,
+        if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &flag,
                 sizeof(int)) == -1) {
-            close(listen_sock);
+            close(listen_fd);
             PyErr_SetFromErrno(PyExc_IOError);
             return -1;
         }
 
-        if (bind(listen_sock, p->ai_addr, p->ai_addrlen) == -1) {
-            close(listen_sock);
+        if (bind(listen_fd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(listen_fd);
             PyErr_SetFromErrno(PyExc_IOError);
             return -1;
         }
@@ -379,7 +391,7 @@ inet_listen(ServerObject *server, char *server_name, int server_port)
     }
 
     if (p == NULL)  {
-        close(listen_sock);
+        close(listen_fd);
         PyErr_SetString(PyExc_IOError,"server: failed to bind\n");
         return -1;
     }
@@ -387,12 +399,12 @@ inet_listen(ServerObject *server, char *server_name, int server_port)
     freeaddrinfo(servinfo); // all done with this structure
     
     // BACKLOG 1024
-    if (listen(listen_sock, BACKLOG) == -1) {
-        close(listen_sock);
+    if (listen(listen_fd, BACKLOG) == -1) {
+        close(listen_fd);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
-    server->listen_fd = listen_sock;
+    listen_sock = listen_fd;
     return 1;
 }
 
@@ -409,11 +421,11 @@ check_unix_sockpath(char *sock_name)
 }
 
 static inline int
-unix_listen(ServerObject *server, char *sock_name)
+unix_listen(char *sock_name)
 {
     int flag = 1;
     struct sockaddr_un saddr;
-    int listen_sock;
+    int listen_fd;
     mode_t old_umask;
 
 #ifdef DEBUG
@@ -422,14 +434,14 @@ unix_listen(ServerObject *server, char *sock_name)
     memset(&saddr, 0, sizeof(saddr));
     check_unix_sockpath(sock_name);
 
-    if ((listen_sock = socket(AF_UNIX, SOCK_STREAM,0)) == -1) {
+    if ((listen_fd = socket(AF_UNIX, SOCK_STREAM,0)) == -1) {
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
 
-    if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &flag,
+    if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &flag,
             sizeof(int)) == -1) {
-        close(listen_sock);
+        close(listen_fd);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
@@ -439,56 +451,56 @@ unix_listen(ServerObject *server, char *sock_name)
     
     old_umask = umask(0);
 
-    if (bind(listen_sock, (struct sockaddr *)&saddr, sizeof(saddr)) == -1) {
-        close(listen_sock);
+    if (bind(listen_fd, (struct sockaddr *)&saddr, sizeof(saddr)) == -1) {
+        close(listen_fd);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
     umask(old_umask);
 
     // BACKLOG 1024
-    if (listen(listen_sock, BACKLOG) == -1) {
-        close(listen_sock);
+    if (listen(listen_fd, BACKLOG) == -1) {
+        close(listen_fd);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
-    server->listen_fd = listen_sock;
-    server->unix_sock_name = sock_name;
+    listen_sock = listen_fd;
+    unix_sock_name = sock_name;
     return 1;
 }
 
 
 static inline PyObject * 
-Server_listen(ServerObject *self, PyObject *args)
+mgate_listen(PyObject *self, PyObject *args)
 {
-    char *server_name;
-    int server_port;
     PyObject *o;
     int ret;
 
     if (!PyArg_ParseTuple(args, "O:listen", &o))
         return NULL;
 
-    if(self->listen_fd > 0){
+    if(listen_sock > 0){
         PyErr_SetString(PyExc_Exception, "already set listen socket");
         return NULL;
     }
     
     if(PyTuple_Check(o)){
         //inet 
-        if(!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port))
+        if(!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port)){
             return NULL;
-        ret = inet_listen(self, server_name, server_port);
+        }
+
+        ret = inet_listen(server_name, server_port);
     }else if(PyString_Check(o)){
         // unix domain 
-        ret = unix_listen(self, PyString_AS_STRING(o));
+        ret = unix_listen(PyString_AS_STRING(o));
     }else{
         PyErr_SetString(PyExc_TypeError, "args tuple or string(path)");
         return NULL;
     }
     if(ret < 0){
         //error 
-        self->listen_fd = -1;
+        listen_sock = -1;
         return NULL;
     }
 
@@ -497,9 +509,29 @@ Server_listen(ServerObject *self, PyObject *args)
 
 
 static inline PyObject *
-Server_run(ServerObject *self){
+mgate_run(PyObject *self, PyObject *app)
+{
 
-    picoev_loop* main_loop; //main loop
+    int i = 0;
+    PyObject *watchdog_result;
+
+    if (!PyArg_ParseTuple(args, "O:run", &mgate_app))
+        return NULL; 
+    
+    if(listen_sock <= 0){
+        PyErr_Format(PyExc_TypeError, "not found listen socket");
+        return NULL;
+        
+    }
+    
+    if(!PyCallable_Check(mgat_app)){
+        PyErr_SetString(PyExc_TypeError, "must be callable");
+        mgate_app = NULL;
+        return NULL;
+    }
+
+    Py_INCREF(mgate_app);
+    
 
     picoev_init(MAX_FDS);
     /* create loop */
@@ -509,80 +541,57 @@ Server_run(ServerObject *self){
     setsig(SIGINT, sigint_cb);
     setsig(SIGHUP, sighup_cb);
     
-    self->main_loop = main_loop;
-    
-    setup_listen_sock(self->listen_fd);
+    setup_listen_sock(listen_sock);
+    setup_env_key();
 
     /* add listen socket */
-    picoev_add(main_loop, self->listen_fd, PICOEV_READ, 0, accept_callback, self);
+    picoev_add(main_loop, listen_sock, PICOEV_READ, 0, accept_callback, NULL);
     /* loop */
     while (loop_done) {
         picoev_loop_once(main_loop, 10);
+        i++;
+        // watchdog slow.... skip check
+        
+        //if(watchdog && i > 1){
+        if(watchdog){
+            watchdog_result = PyObject_CallFunction(watchdog, NULL);
+            if(PyErr_Occurred()){
+                PyErr_Print();
+                PyErr_Clear();
+            }
+            Py_XDECREF(watchdog_result);
+            i = 0;
+        }else if(tempfile_fd){
+            fast_notify();
+        }
     }
+
+    Py_DECREF(app);
+    Py_XDECREF(watchdog);
     
     picoev_destroy_loop(main_loop);
     picoev_deinit();
     
+    //clean
+    //clear_start_response();
+    clear_env_key();
+
+    //Py_DECREF(hub_switch_value);
+    //Py_DECREF(client_key);
+    //Py_DECREF(wsgi_input_key);
+    //Py_DECREF(empty_string);
+
+    if(unix_sock_name){
+        unlink(unix_sock_name);
+    }
     Py_RETURN_NONE;
 }
 
-static PyMemberDef Server_members[] = {
-    {NULL} 
-};
-
-
-
-static PyMethodDef Server_method[] = {
-    { "listen",      (PyCFunction)Server_listen, METH_VARARGS, 0 },
-    { "run",      (PyCFunction)Server_run, METH_VARARGS, 0 },
-    { "write",      (PyCFunction)Server_write, METH_VARARGS, 0 },
-    //{ "MemClient",      (PyCFunction)Server_memclient, METH_VARARGS, 0 },
-    { NULL, NULL}
-};
-
-PyTypeObject ServerType = {
-    PyObject_HEAD_INIT(&PyType_Type)
-    0,
-    "mgate.Server",             /*tp_name*/
-    sizeof(ServerObject), /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    0,                         /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,        /*tp_flags*/
-    "Sever",                   /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    Server_method,             /* tp_methods */
-    Server_members,             /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    0,     /* tp_init */
-    0,                         /* tp_alloc */
-    PyType_GenericNew,                         /* tp_new */
-};
 
 static PyMethodDef MGateMethods[] = {
+    { "listen",      (PyCFunction)mgate_listen, METH_VARARGS, 0 },
+    { "run",      (PyCFunction)mgate_run, METH_VARARGS, 0 },
+    { "write",      (PyCFunction)mgate_write, METH_VARARGS, 0 },
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -591,17 +600,13 @@ initmgate(void)
 {
     PyObject *m;
     
-    if(PyType_Ready(&ServerType) < 0)
-        return;
+    
     if(PyType_Ready(&ClientType) < 0)
         return;
     
     m = Py_InitModule3("mgate", MGateMethods, "");
     if(m == NULL)
         return;
-
-    Py_INCREF(&ServerType);
-    PyModule_AddObject(m, "Server", (PyObject *)&ServerType);
 
 	if (PyModule_AddStringConstant(m, "STORED",
 				       stored_response[0]) == -1)

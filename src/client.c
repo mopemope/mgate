@@ -108,9 +108,7 @@ inline int
 Client_exec_parse(Client *self, char *buf, size_t read_length)
 {
     client_t *client;
-    ServerObject *server;
     client = self->client;
-    server = (ServerObject *)self->server;
 
     buf_write(client, buf, read_length);
     
@@ -183,7 +181,7 @@ Client_close(Client *self)
 
 
 inline PyObject *  
-Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
+Client_New(int fd, char *remote_addr, int remote_port)
 {
     Client *self;
 
@@ -194,7 +192,6 @@ Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
     self->fd = fd;
     self->key_num = 0;
     self->data = NULL;
-    self->server = server;
     client_t_new(self, fd, remote_addr, remote_port);
     return (PyObject *)self;
 }
@@ -202,7 +199,6 @@ Client_New(PyObject *server, int fd, char *remote_addr, int remote_port)
 static inline void
 Client_dealloc(Client* self)
 {
-    self->server = NULL;
     self->client = NULL;
     self->key_num = 0;
     self->data = NULL;

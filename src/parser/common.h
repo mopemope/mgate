@@ -5,6 +5,7 @@
 
 /* env key */
 extern PyObject *cmd_key;
+extern PyObject *cmdi_key;
 extern PyObject *client_key;
 extern PyObject *key_key;
 extern PyObject *value_key;
@@ -29,11 +30,13 @@ extern PyObject *m_decr;
 extern PyObject *m_cas;
 
 inline void
-init_parser_key(void);
+setup_env_key(void);
 
 inline void
-fin_parser_key(void);
+clear_env_key(void);
 
+inline PyObject * 
+call_app(PyObject *env);
 
 
 

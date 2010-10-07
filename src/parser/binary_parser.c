@@ -1,17 +1,14 @@
 #include "../server.h"
 
 static inline int
-set_base_env(PyObject *env, Client *pyclient, memproto_header *h)
+set_base_env(PyObject *env, PyObject *method_name, Client *pyclient, memproto_header *h)
 {
-    PyObject *key = PyString_FromString("cmd");
     PyObject *object = Py_BuildValue("l", h->opcode);
-    PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
+    
+    PyDict_SetItem(env, cmd_key, method_name);
+    PyDict_SetItem(env, cmdi_key, object);
     Py_DECREF(object);
-
-    key = PyString_FromString("_client");
-    PyDict_SetItem(env, key, (PyObject *)pyclient);
-    Py_DECREF(key);
+    PyDict_SetItem(env, client_key, (PyObject *)pyclient);
 
     //keep header
     pyclient->header = h;
@@ -23,10 +20,8 @@ static inline int
 set_get_env(PyObject *env, const char *c_key, uint16_t c_key_len)
 {
     int ret = 0;
-    PyObject *key = PyString_FromString("key");
     PyObject *object = PyString_FromStringAndSize(c_key, c_key_len);
-    ret = PyDict_SetItem(env, key, object);
-    Py_DECREF(key);
+    ret = PyDict_SetItem(env, key_key, object);
     Py_DECREF(object);
     return ret;
 }
@@ -37,28 +32,20 @@ set_storage_env(PyObject *env, const char* key, uint16_t keylen,
 {
     int ret = 0;
 
-    PyObject *pykey = PyString_FromString("key");
     PyObject *object = PyString_FromStringAndSize(key, keylen);
-    PyDict_SetItem(env, pykey, object);
-    Py_DECREF(pykey);
+    PyDict_SetItem(env, key_key, object);
     Py_DECREF(object);
 
-    pykey = PyString_FromString("data");
     object = PyString_FromStringAndSize(val, vallen);
-    PyDict_SetItem(env, pykey, object);
-    Py_DECREF(pykey);
+    PyDict_SetItem(env, data_key, object);
     Py_DECREF(object);
 
-    pykey = PyString_FromString("exptime");
     object = Py_BuildValue("I", expiration);
-    PyDict_SetItem(env, pykey, object);
-    Py_DECREF(pykey);
+    PyDict_SetItem(env, exptime_key, object);
     Py_DECREF(object);
 
-    pykey = PyString_FromString("flags");
     object = Py_BuildValue("H", flags);
-    PyDict_SetItem(env, pykey, object);
-    Py_DECREF(pykey);
+    PyDict_SetItem(env, flags_key, object);
     Py_DECREF(object);
 
     return ret;
@@ -71,21 +58,15 @@ set_append_env(PyObject *env, const char* key, uint16_t keylen,
 {
     int ret = 0;
 
-    PyObject *pykey = PyString_FromString("key");
     PyObject *object = PyString_FromStringAndSize(key, keylen);
-    PyDict_SetItem(env, pykey, object);
-    Py_DECREF(pykey);
+    PyDict_SetItem(env, key_key, object);
     Py_DECREF(object);
 
-    pykey = PyString_FromString("data");
     object = PyString_FromStringAndSize(val, vallen);
-    PyDict_SetItem(env, pykey, object);
-    Py_DECREF(pykey);
+    PyDict_SetItem(env, data_key, object);
     Py_DECREF(object);
-
 
     return ret;
-    
 }
 
 static inline int
@@ -93,19 +74,13 @@ set_delete_env(PyObject *env, const char* key, uint16_t keylen, uint32_t expirat
 {
     int ret = 0;
 
-    PyObject *pykey = PyString_FromString("key");
     PyObject *object = PyString_FromStringAndSize(key, keylen);
-    PyDict_SetItem(env, pykey, object);
-    Py_DECREF(pykey);
+    PyDict_SetItem(env, key_key, object);
     Py_DECREF(object);
 
-
-    pykey = PyString_FromString("exptime");
     object = Py_BuildValue("I", expiration);
-    PyDict_SetItem(env, pykey, object);
-    Py_DECREF(pykey);
+    PyDict_SetItem(env, exptime_key, object);
     Py_DECREF(object);
-
     return ret;
 }
 

@@ -3,10 +3,11 @@
 
 
 inline void
-init_parser_key(void)
+setup_env_key(void)
 {
     /* env key */
     cmd_key = PyString_FromString("cmd");
+    cmdi_key = PyString_FromString("cmdi");
     client_key = PyString_FromString("_client");
     key_key = PyString_FromString("key");
     value_key = PyString_FromString("value");
@@ -32,11 +33,12 @@ init_parser_key(void)
 }
 
 inline void
-fin_parser_key(void)
+clear_env_key(void)
 {
 
     /* env key */
     Py_DECREF(cmd_key);
+    Py_DECREF(cmdi_key);
     Py_DECREF(client_key);
     Py_DECREF(key_key);
     Py_DECREF(value_key);
@@ -59,4 +61,29 @@ fin_parser_key(void)
     Py_DECREF(m_decr);
     Py_DECREF(m_cas);
 }
+
+
+inline PyObject * 
+call_app(PyObject *env)
+{
+    PyObject *args = NULL, PyObject *res = NULL;
+
+    args = Py_BuildValue("(O)", env);
+    res = PyObject_CallObject(mgate_app, args, NULL);
+
+    Py_DECREF(args);
+
+    if(res && res == Py_None){
+        PyErr_SetString(PyExc_Exception, "response is None");
+    }
+    if (PyErr_Occurred()){ 
+        //TODO Error log
+        return NULL;
+    }
+    return res;
+}
+
+
+
+
 
