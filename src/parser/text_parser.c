@@ -1,4 +1,5 @@
 #include "../server.h"
+#include "text_parser.h"
 #include "common.h"
 
 static inline int
@@ -17,37 +18,6 @@ set_base_env(PyObject *env, PyObject *method_name, Client *pyclient, memtext_com
 
 }
 
-static inline int 
-process_app(Client *pyclient, PyObject *env)
-{
-    PyObject *response=NULL;
-    int ret = -1;
-
-    response = call_app(env);
-    
-    if(PyErr_Occurred()){
-        //TODO error
-        PyErr_Print();
-        //exit(-1);
-        loop_done = 0;
-        goto error;
-    }
-    
-    ret = write_response((Client *)pyclient, env, response);
-    
-    if(PyErr_Occurred()){
-        //TODO error
-        PyErr_Print();
-        //exit(-1);
-        loop_done = 0;
-        goto error;
-    }
-    Py_XDECREF(response);
-    return ret;
-error:
-    Py_XDECREF(response);
-    return -1;
-}
 
 static inline int
 set_numeric_env(PyObject *env, memtext_request_numeric *req)
@@ -250,7 +220,7 @@ storage(Client *pyclient, memtext_command cmd, memtext_request_storage *req)
         default:
             break;
     }
-    return process_app(pyclient, env);
+    return call_app(pyclient, env);
 }
 
 static inline int
@@ -262,7 +232,7 @@ cas(Client *pyclient, memtext_command cmd, memtext_request_cas *req)
     //set env
     set_cas_env(env, req);
     set_base_env(env, m_cas, pyclient, cmd); 
-    return process_app(pyclient, env);
+    return call_app(pyclient, env);
 }
 
 static inline int
@@ -275,7 +245,7 @@ delete(Client *pyclient, memtext_command cmd, memtext_request_delete *req)
     //set env
     set_delete_env(env, req);
     set_base_env(env, m_delete, pyclient, cmd);
-    return process_app(pyclient, env);
+    return call_app(pyclient, env);
     
 }
 
@@ -289,7 +259,7 @@ get(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req)
     //set env
     set_get_env(env, req);
     set_base_env(env, m_get, pyclient, cmd);
-    return process_app(pyclient, env);
+    return call_app(pyclient, env);
 }
 
 static inline int 
@@ -311,14 +281,10 @@ get_multi(Client *pyclient, memtext_command cmd, memtext_request_retrieval *req)
         set_get_env_internal(env, c_key, c_key_len);
         
         set_base_env(env, m_get, pyclient, cmd);
-        process_app(pyclient, env);
+        call_app(pyclient, env);
     }
     
     return ret;
-    
-error:
-    Py_XDECREF(response);
-    return -1;
 
 }
 
@@ -341,7 +307,7 @@ numeric(Client *pyclient, memtext_command cmd, memtext_request_numeric *req)
         default:
             break;
     }
-    return process_app(pyclient, env);
+    return call_app(pyclient, env);
 
 
 }

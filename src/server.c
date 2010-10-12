@@ -509,7 +509,7 @@ mgate_listen(PyObject *self, PyObject *args)
 
 
 static inline PyObject *
-mgate_run(PyObject *self, PyObject *app)
+mgate_run(PyObject *self, PyObject *args)
 {
 
     int i = 0;
@@ -524,7 +524,7 @@ mgate_run(PyObject *self, PyObject *app)
         
     }
     
-    if(!PyCallable_Check(mgat_app)){
+    if(!PyCallable_Check(mgate_app)){
         PyErr_SetString(PyExc_TypeError, "must be callable");
         mgate_app = NULL;
         return NULL;
@@ -561,12 +561,12 @@ mgate_run(PyObject *self, PyObject *app)
             }
             Py_XDECREF(watchdog_result);
             i = 0;
-        }else if(tempfile_fd){
-            fast_notify();
+        //}else if(tempfile_fd){
+        //    fast_notify();
         }
     }
 
-    Py_DECREF(app);
+    Py_DECREF(mgate_app);
     Py_XDECREF(watchdog);
     
     picoev_destroy_loop(main_loop);

@@ -35,8 +35,8 @@ setup_env_key(void);
 inline void
 clear_env_key(void);
 
-inline PyObject * 
-call_app(PyObject *env);
+inline int 
+call_app(Client *pyclient, PyObject *env);
 
 
 

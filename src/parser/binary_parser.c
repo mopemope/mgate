@@ -1,4 +1,6 @@
 #include "../server.h"
+#include "binary_parser.h"
+#include "common.h"
 
 static inline int
 set_base_env(PyObject *env, PyObject *method_name, Client *pyclient, memproto_header *h)
@@ -88,97 +90,80 @@ static inline void
 cb_get(void* user, memproto_header* h, const char* key, uint16_t keylen)
 {
 
-#ifdef DEBUG
-    printf("cb_get\n");
-#endif
     Client *pyclient;
-    PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
+    PyObject *env;
     int ret = -1;
     
     pyclient = (Client *)user;
-    server = pyclient->server;
     env = PyDict_New();
 
     //set env
     ret = set_get_env(env, key, keylen);
-
-    method_name = PyString_FromString("get");
-    set_base_env(env, pyclient, h);
-    
-    proxy = PyDictProxy_New(env);
-    response = PyObject_CallMethodObjArgs(server, method_name, proxy, NULL);
-    Py_DECREF(method_name);
-    Py_DECREF(proxy);
-    
-    if(PyErr_Occurred()){
-        PyErr_Print();
-        loop_done = 0;
-        goto error;
-    }
-error:
-    Py_XDECREF(response);
+    set_base_env(env, m_get, pyclient, h);
+    call_app(pyclient, env);    
 
 }
 
 static inline void 
 cb_storage(void* user, memproto_header* h, const char* key, uint16_t keylen, 
         const char* val, uint32_t vallen, uint32_t flags, uint32_t expiration){
-#ifdef DEBUG
-    printf("cb_set\n");
-#endif
+    
     Client *pyclient;
-    PyObject *server, *proxy, *env, *response=NULL, *method_name=NULL;
+    PyObject *env;
     int ret = -1;
     
     pyclient = (Client *)user;
-    server = pyclient->server;
     env = PyDict_New();
 
     //set env
-    ret = set_storage_env(env, key, keylen, val, vallen, flags, expiration);
+    set_storage_env(env, key, keylen, val, vallen, flags, expiration);
     
-    //TODO 
     switch(h->opcode){
         case MEMPROTO_CMD_SET:
-            method_name = PyString_FromString("set");
+            set_base_env(env, m_set, pyclient, h);
             break;
         case MEMPROTO_CMD_ADD:
-            method_name = PyString_FromString("add");
+            set_base_env(env, m_add, pyclient, h);
             break;
-        case MEMTEXT_CMD_REPLACE:
-            method_name = PyString_FromString("replace");
+        case MEMPROTO_CMD_REPLACE:
+            set_base_env(env, m_replace, pyclient, h);
             break;
         default:
-
+            //TODO ERROR
             break;
     }
 
-    if(!method_name){
-        //error
-        goto error;
-    }
-
-    set_base_env(env, pyclient, h);
-    
-    proxy = PyDictProxy_New(env);
-    response = PyObject_CallMethodObjArgs(server, method_name, proxy, NULL);
-    Py_DECREF(method_name);
-    Py_DECREF(proxy);
-    
-    if(PyErr_Occurred()){
-        PyErr_Print();
-        loop_done = 0;
-        goto error;
-    }
-error:
-    Py_XDECREF(method_name);
-    Py_XDECREF(response);
+    call_app(pyclient, env);    
     
 }
 
 static inline void
 cb_append(void* user, memproto_header* h, const char* key, uint16_t keylen,
 			const char* val, uint32_t vallen){
+
+    Client *pyclient;
+    PyObject *env;
+    int ret = -1;
+    
+    pyclient = (Client *)user;
+    env = PyDict_New();
+
+    //set env
+    set_append_env(env, key, keylen, val, vallen);
+    
+    switch(h->opcode){
+        case MEMPROTO_CMD_APPEND:
+            set_base_env(env, m_append, pyclient, h);
+            break;
+        case MEMPROTO_CMD_PREPEND:
+            set_base_env(env, m_prepend, pyclient, h);
+            break;
+        default:
+            //TODO ERROR
+            break;
+    }
+
+    call_app(pyclient, env);    
 }
 
 static inline void 

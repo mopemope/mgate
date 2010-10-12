@@ -56,7 +56,7 @@ request_send_data(Client *client, PyObject *env, struct iovec *iov, int iov_cnt,
     new_bucket->cas = cas;
     new_bucket->binary_protocol = client->binary_protocol;
 
-    return send_bucket(client, new_bucket);
+    send_bucket(client, new_bucket);
 
 }
 

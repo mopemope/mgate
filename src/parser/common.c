@@ -63,10 +63,11 @@ clear_env_key(void)
 }
 
 
-inline PyObject * 
-call_app(PyObject *env)
+inline int 
+call_app(PyObject *pyclient, PyObject *env)
 {
     PyObject *args = NULL, PyObject *res = NULL;
+    int ret;
 
     args = Py_BuildValue("(O)", env);
     res = PyObject_CallObject(mgate_app, args, NULL);
@@ -80,10 +81,21 @@ call_app(PyObject *env)
         //TODO Error log
         return NULL;
     }
-    return res;
+    
+    ret = write_response((Client *)pyclient, env, response);
+    
+    if(PyErr_Occurred()){
+        //TODO error
+        PyErr_Print();
+        //exit(-1);
+        loop_done = 0;
+        goto error;
+    }
+    if(ret < 0){
+        //TODO Error
+
+    }
+    Py_XDECREF(response);
+    return ret;
 }
-
-
-
-
 

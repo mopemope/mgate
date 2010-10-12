@@ -2,6 +2,7 @@
 #define RESPONSE_H
 
 #include <Python.h>
+#include "../server.h"
 #include "../client.h"
 
 inline int
